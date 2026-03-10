@@ -2,20 +2,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckSquare, Plus, ChevronLeft, ChevronRight, User } from "lucide-react";
+import { useAppContext } from "@/context/AppContext";
 
 export default function CalendarView() {
+  const { events } = useAppContext();
   const [view, setView] = useState<'month'|'week'|'day'>('week');
   
   const hours = Array.from({ length: 11 }, (_, i) => i + 8); // 8 AM to 6 PM
   const days = ['Seg, 12', 'Ter, 13', 'Qua, 14', 'Qui, 15', 'Sex, 16'];
-
-  const mockEvents = [
-    { day: 0, hour: 10, duration: 1, title: "Call de Descoberta", type: "meeting", style: "border-primary bg-primary/10 text-foreground" },
-    { day: 0, hour: 14, duration: 1.5, title: "Tarefa de Follow-up (Auto)", type: "task", style: "border-muted-foreground bg-secondary text-muted-foreground" },
-    { day: 2, hour: 11, duration: 1, title: "Demo: Acme Corp", type: "meeting", style: "border-primary bg-primary/10 text-foreground" },
-    { day: 3, hour: 9, duration: 0.5, title: "Enviar Proposta", type: "task", style: "border-muted-foreground bg-secondary text-muted-foreground" },
-    { day: 4, hour: 15, duration: 1, title: "Reunião de Equipe", type: "meeting", style: "border-border bg-background text-foreground" },
-  ];
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col space-y-4">
@@ -40,9 +34,9 @@ export default function CalendarView() {
               </button>
             ))}
           </div>
-          <Button className="gap-1.5 h-8 text-xs">
+          <Button className="gap-1.5 h-8 text-xs bg-primary text-primary-foreground">
             <Plus className="w-3.5 h-3.5" />
-            Criar
+            Criar Evento
           </Button>
         </div>
       </div>
@@ -98,23 +92,30 @@ export default function CalendarView() {
                     <div key={hour} className="h-16 border-b border-border/50 transition-colors hover:bg-secondary/30 cursor-pointer" />
                   ))}
                   
-                  {mockEvents.filter(e => e.day === dayIndex).map((event, i) => (
-                    <div 
-                      key={i}
-                      className={`absolute left-1 right-1 rounded p-1.5 border-l-2 ${event.style} shadow-sm cursor-pointer hover:opacity-90 transition-all text-xs`}
-                      style={{ 
-                        top: `${(event.hour - 8) * 4}rem`,
-                        height: `calc(${event.duration * 4}rem - 4px)`,
-                        zIndex: 5
-                      }}
-                    >
-                      <div className="font-medium truncate">{event.title}</div>
-                      <div className="text-[9px] mt-0.5 opacity-80 flex items-center gap-1">
-                        {event.type === 'meeting' ? <User className="w-2.5 h-2.5"/> : <CheckSquare className="w-2.5 h-2.5"/>}
-                        {event.hour}:00 - {event.hour + event.duration}:00
+                  {events.map((event, i) => {
+                    // Very simple mock logic to map events to days:
+                    // In a real app, this would use exact date checking
+                    const mockDay = i % 5; 
+                    if (mockDay !== dayIndex) return null;
+
+                    return (
+                      <div 
+                        key={event.id}
+                        className={`absolute left-1 right-1 rounded p-1.5 border-l-2 ${event.style || 'border-primary bg-primary/10 text-foreground'} shadow-sm cursor-pointer hover:opacity-90 transition-all text-xs`}
+                        style={{ 
+                          top: `${(event.hour - 8) * 4}rem`,
+                          height: `calc(${event.duration * 4}rem - 4px)`,
+                          zIndex: 5
+                        }}
+                      >
+                        <div className="font-medium truncate">{event.title}</div>
+                        <div className="text-[9px] mt-0.5 opacity-80 flex items-center gap-1">
+                          {event.type === 'meeting' ? <User className="w-2.5 h-2.5"/> : <CheckSquare className="w-2.5 h-2.5"/>}
+                          {event.hour}:00 - {event.hour + event.duration}:00
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ))}
             </div>

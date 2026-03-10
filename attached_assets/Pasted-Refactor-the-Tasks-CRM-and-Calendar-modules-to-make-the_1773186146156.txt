@@ -1,0 +1,123 @@
+Refactor the Tasks, CRM, and Calendar modules to make them deeply connected and more powerful.
+
+TASKS MODULE
+
+1. Add support for the Eisenhower Priority Matrix.
+
+Tasks should be categorized using four priority types:
+
+Urgent + Important → Do Now
+Important + Not Urgent → Schedule
+Urgent + Not Important → Delegate
+Not Urgent + Not Important → Eliminate
+
+Users should be able to filter tasks using this matrix.
+
+Tasks should still support normal list view.
+
+Each task must include detailed information:
+
+* Task title
+* Description
+* Priority
+* Due date
+* Responsible user
+* Linked CRM lead
+* Linked CRM card
+* Linked pipeline stage
+
+TASK DETAIL VIEW
+
+Clicking a task must open a detailed panel showing:
+
+* Full task description
+* Responsible person
+* Linked lead
+* Linked CRM card
+* Activity history
+* Notes
+
+CRM MODULE
+
+Replace "Manage Stages" with a new section called:
+
+MANAGE PIPELINE
+
+Inside Manage Pipeline users should be able to:
+
+* Add pipeline stages
+* Rename stages
+* Reorder stages
+* Delete stages
+
+For each stage the user must configure a CADENCE.
+
+Cadence configuration must allow:
+
+* Number of touches
+* Interval between touches
+* Optional trigger for each touch
+
+Example cadence:
+
+Touch 1 → Call
+Touch 2 → WhatsApp
+Touch 3 → Email
+
+When a lead enters a stage:
+
+The system automatically generates tasks according to the cadence.
+
+CALENDAR MODULE
+
+When opening the calendar the user should see their agenda.
+
+Calendar must include views:
+
+* Day
+* Week
+* Month
+
+Features required:
+
+* Current time indicator line
+* Drag and drop events
+* Meeting scheduling
+* Task scheduling
+
+TEAM CALENDAR
+
+Users must be able to:
+
+* Add teammates
+* View calendars of team members (if permitted)
+
+CALENDAR INTEGRATION
+
+Calendar must display:
+
+* Meetings
+* Tasks
+* CRM follow-ups
+
+Clicking a calendar item must open the detailed task or meeting panel.
+
+DATA SYNCHRONIZATION
+
+All modules must share data.
+
+Examples:
+
+Lead → CRM → Task → Calendar
+
+If a task is created for a lead:
+
+It must appear in:
+
+* Tasks module
+* Calendar
+* CRM lead panel
+
+Goal:
+
+Create a tightly integrated sales system where CRM, tasks, and calendar are fully synchronized.

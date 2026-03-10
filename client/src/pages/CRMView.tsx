@@ -5,51 +5,11 @@ import { Plus, MoreHorizontal, Clock, DollarSign, Calendar, Target, Activity, Me
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-
-type CadenceAction = {
-  type: 'call' | 'email' | 'message';
-  intervalDays: number;
-};
-
-type Stage = {
-  id: string;
-  name: string;
-  cadence: CadenceAction[];
-};
-
-type Lead = {
-  id: number;
-  name: string;
-  contact: string;
-  value: string;
-  stage: string;
-  tags: string[];
-  score: number;
-  nextTask: string | null;
-  meetingDate: string | null;
-  formResponses: Record<string, string>;
-  notes: string;
-};
-
-const INITIAL_STAGES: Stage[] = [
-  { id: 'new', name: 'Novos Leads', cadence: [{ type: 'email', intervalDays: 0 }, { type: 'call', intervalDays: 1 }] },
-  { id: 'qualified', name: 'Qualificados', cadence: [{ type: 'call', intervalDays: 2 }] },
-  { id: 'demo', name: 'Demo Agendada', cadence: [] },
-  { id: 'negotiation', name: 'Negociação', cadence: [{ type: 'email', intervalDays: 3 }, { type: 'call', intervalDays: 5 }] },
-  { id: 'won', name: 'Fechado/Ganho', cadence: [] },
-];
-
-const INITIAL_LEADS: Lead[] = [
-  { id: 1, name: "Acme Corp", contact: "Sarah M.", value: "R$ 12.000", stage: "new", tags: ["SaaS", "Inbound"], score: 85, nextTask: "Ligar (Touch 2)", meetingDate: null, formResponses: { "Tamanho da empresa": "50-200", "Desafio": "Vendas inconsistentes" }, notes: "Lead muito interessado, priorizar." },
-  { id: 2, name: "TechFlow", contact: "Mike T.", value: "R$ 5.500", stage: "qualified", tags: ["E-commerce"], score: 62, nextTask: "Ligar (Touch 1)", meetingDate: null, formResponses: { "Tamanho da empresa": "1-10", "Desafio": "Custo de aquisição alto" }, notes: "" },
-  { id: 3, name: "Global Ind.", contact: "Alex W.", value: "R$ 24.000", stage: "demo", tags: ["Enterprise"], score: 95, nextTask: null, meetingDate: "Amanhã, 14:00", formResponses: { "Tamanho da empresa": "500+", "Desafio": "Escalar operação global" }, notes: "Preparar case study similar." },
-  { id: 4, name: "Startup Inc", contact: "John D.", value: "R$ 2.000", stage: "new", tags: ["Outbound"], score: 40, nextTask: "Email (Touch 1)", meetingDate: null, formResponses: {}, notes: "" },
-  { id: 5, name: "Inovação S.A.", contact: "Lisa R.", value: "R$ 8.500", stage: "negotiation", tags: ["SaaS"], score: 78, nextTask: "Email de Follow-up (Touch 1)", meetingDate: null, formResponses: { "Tamanho da empresa": "11-50" }, notes: "Aguardando aprovação do financeiro." },
-];
+import { useAppContext } from "@/context/AppContext";
+import type { Lead, Stage } from "@/context/AppContext";
 
 export default function CRMView() {
-  const [stages, setStages] = useState<Stage[]>(INITIAL_STAGES);
-  const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS);
+  const { stages, setStages, leads, updateLeadStage } = useAppContext();
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
   
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -68,20 +28,7 @@ export default function CRMView() {
   const handleDrop = (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
     if (draggedLeadId !== null) {
-      setLeads(leads.map(lead => {
-        if (lead.id === draggedLeadId && lead.stage !== stageId) {
-          // In a real app, moving to a new stage would generate new tasks based on cadence
-          const stage = stages.find(s => s.id === stageId);
-          let nextTask = null;
-          if (stage && stage.cadence.length > 0) {
-            const firstAction = stage.cadence[0];
-            const actionText = firstAction.type === 'call' ? 'Ligar' : firstAction.type === 'email' ? 'Email' : 'Mensagem';
-            nextTask = `${actionText} (Touch 1)`;
-          }
-          return { ...lead, stage: stageId, nextTask };
-        }
-        return lead;
-      }));
+      updateLeadStage(draggedLeadId, stageId);
       setDraggedLeadId(null);
     }
   };
