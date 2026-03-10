@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Settings2, Copy, ChevronDown, Monitor, CalendarDays, ExternalLink, Search, Filter, HelpCircle, X, HelpCircleIcon, MoreVertical } from "lucide-react";
+import { Plus, Settings2, Copy, ChevronDown, Monitor, CalendarDays, ExternalLink, Search, Filter, HelpCircle, X, HelpCircleIcon, MoreVertical, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
