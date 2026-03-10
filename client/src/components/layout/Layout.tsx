@@ -50,22 +50,18 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: bool
           const isActive = location === item.href;
           const Icon = item.icon;
           return (
-            <Link key={item.href} href={item.href}>
-              <a className={`flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${isActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
-                <Icon className="w-4 h-4" />
-                <span>{item.label}</span>
-              </a>
+            <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${isActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
+              <Icon className="w-4 h-4" />
+              <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
       <div className="p-3 mt-auto border-t">
-        <Link href="/settings">
-          <a className="flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors text-muted-foreground hover:bg-secondary/50 hover:text-foreground">
-            <Settings className="w-4 h-4" />
-            <span>Configurações</span>
-          </a>
+        <Link href="/settings" className="flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors text-muted-foreground hover:bg-secondary/50 hover:text-foreground">
+          <Settings className="w-4 h-4" />
+          <span>Configurações</span>
         </Link>
       </div>
     </aside>
