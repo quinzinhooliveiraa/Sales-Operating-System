@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import logoImage from "@assets/ChatGPT_Image_27_de_nov._de_2025,_16_43_05_1773182905923.png";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -31,14 +32,14 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: bool
   return (
     <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex flex-col ${open ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="p-6 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl">
-          O
+        <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-transparent">
+          <img src={logoImage} alt="Olivar Logo" className="w-full h-full object-cover" />
         </div>
         <span className="font-heading font-semibold text-lg tracking-tight">Olivar OS</span>
       </div>
 
       <div className="px-4 pb-4">
-        <Button className="w-full justify-start gap-2 shadow-sm" size="default">
+        <Button className="w-full justify-start gap-2 shadow-sm bg-primary text-primary-foreground hover:bg-primary/90" size="default">
           <Plus className="w-4 h-4" />
           <span>Nova Ação</span>
         </Button>
@@ -50,7 +51,7 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: bool
           const Icon = item.icon;
           return (
             <Link key={item.href} href={item.href}>
-              <a className={`flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${isActive ? 'bg-secondary text-foreground font-medium' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
+              <a className={`flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${isActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
                 <Icon className="w-4 h-4" />
                 <span>{item.label}</span>
               </a>
@@ -88,10 +89,10 @@ export function Topbar({ setSidebarOpen }: { setSidebarOpen: (open: boolean) => 
         <ThemeToggle />
         <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
           <Bell className="w-4 h-4" />
-          <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-destructive rounded-full"></span>
+          <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-primary rounded-full"></span>
         </Button>
         <div className="h-4 w-px bg-border mx-1"></div>
-        <Avatar className="w-7 h-7 cursor-pointer hover:opacity-80 transition-all">
+        <Avatar className="w-7 h-7 cursor-pointer hover:opacity-80 transition-all border border-border">
           <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026024d" />
           <AvatarFallback>JD</AvatarFallback>
         </Avatar>
