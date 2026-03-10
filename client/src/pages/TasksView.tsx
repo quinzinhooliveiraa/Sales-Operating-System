@@ -111,7 +111,7 @@ export default function TasksView() {
             Todas
           </Button>
           <Button variant={filter === 'do-now' ? 'secondary' : 'ghost'} size="sm" className="h-7 text-xs text-red-500" onClick={() => setFilter('do-now')}>
-            Fazer Agora
+            A Fazer
           </Button>
           <Button variant={filter === 'schedule' ? 'secondary' : 'ghost'} size="sm" className="h-7 text-xs text-blue-500" onClick={() => setFilter('schedule')}>
             Agendar
@@ -132,60 +132,195 @@ export default function TasksView() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-x-auto pb-2">
         {viewMode === 'list' ? (
           <Card className="glass overflow-hidden border-border/50">
             {renderTaskList(filteredTasks)}
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
-            <Card className="glass border-red-500/20 flex flex-col overflow-hidden">
-              <div className="p-3 border-b border-border/50 bg-red-500/5 font-medium text-sm flex items-center justify-between">
+          <div className="flex gap-4 h-full min-w-max">
+            {/* Urgent & Important (Do Now) */}
+            <div className="w-80 flex flex-col bg-secondary/20 rounded-xl border border-red-500/20 shadow-sm">
+              <div className="p-3 flex items-center justify-between border-b border-red-500/20 shrink-0 bg-red-500/5 rounded-t-xl">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-red-500" />
-                  <span className="text-red-500">Urgente & Importante (Fazer)</span>
+                  <h3 className="font-medium text-sm text-red-500">A FAZER (Urgente e Importante)</h3>
+                </div>
+                <span className="text-[10px] font-medium text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded">
+                  {filteredTasks.filter(t => t.priority === 'do-now').length}
+                </span>
+              </div>
+              <div className="flex-1 p-2 overflow-y-auto">
+                <div className="space-y-2">
+                  {filteredTasks.filter(t => t.priority === 'do-now').map(task => (
+                    <div key={task.id} className="bg-card border p-3 rounded-lg shadow-sm group">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2">
+                          <button 
+                            onClick={() => toggleTaskStatus(task.id)}
+                            className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${task.status === 'completed' ? 'bg-primary border-primary text-primary-foreground' : 'border-border hover:border-primary'}`}
+                          >
+                            {task.status === 'completed' && <CheckSquare className="w-2.5 h-2.5" />}
+                          </button>
+                          <p className={`text-sm font-medium cursor-pointer hover:underline ${task.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`} onClick={() => setSelectedTask(task)}>
+                            {task.title}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 mt-2 ml-6">
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded flex items-center gap-1 bg-secondary text-muted-foreground">
+                          <Clock className="w-2.5 h-2.5" /> {task.dueDate}
+                        </span>
+                        {task.linkedLeadId && (() => {
+                          const lead = leads.find(l => l.id === task.linkedLeadId);
+                          return lead ? (
+                            <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-medium truncate max-w-[120px]">
+                              {lead.name}
+                            </span>
+                          ) : null;
+                        })()}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto">
-                {renderTaskList(filteredTasks.filter(t => t.priority === 'do-now'))}
-              </div>
-            </Card>
+            </div>
 
-            <Card className="glass border-blue-500/20 flex flex-col overflow-hidden">
-              <div className="p-3 border-b border-border/50 bg-blue-500/5 font-medium text-sm flex items-center justify-between">
+            {/* Not Urgent & Important (Schedule) */}
+            <div className="w-80 flex flex-col bg-secondary/20 rounded-xl border border-blue-500/20 shadow-sm">
+              <div className="p-3 flex items-center justify-between border-b border-blue-500/20 shrink-0 bg-blue-500/5 rounded-t-xl">
                 <div className="flex items-center gap-2">
                   <CalendarDays className="w-4 h-4 text-blue-500" />
-                  <span className="text-blue-500">Não Urgente & Importante (Agendar)</span>
+                  <h3 className="font-medium text-sm text-blue-500">AGENDAR (Importante, não Urgente)</h3>
+                </div>
+                <span className="text-[10px] font-medium text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded">
+                  {filteredTasks.filter(t => t.priority === 'schedule').length}
+                </span>
+              </div>
+              <div className="flex-1 p-2 overflow-y-auto">
+                <div className="space-y-2">
+                  {filteredTasks.filter(t => t.priority === 'schedule').map(task => (
+                    <div key={task.id} className="bg-card border p-3 rounded-lg shadow-sm group">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2">
+                          <button 
+                            onClick={() => toggleTaskStatus(task.id)}
+                            className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${task.status === 'completed' ? 'bg-primary border-primary text-primary-foreground' : 'border-border hover:border-primary'}`}
+                          >
+                            {task.status === 'completed' && <CheckSquare className="w-2.5 h-2.5" />}
+                          </button>
+                          <p className={`text-sm font-medium cursor-pointer hover:underline ${task.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`} onClick={() => setSelectedTask(task)}>
+                            {task.title}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 mt-2 ml-6">
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded flex items-center gap-1 bg-secondary text-muted-foreground">
+                          <Clock className="w-2.5 h-2.5" /> {task.dueDate}
+                        </span>
+                        {task.linkedLeadId && (() => {
+                          const lead = leads.find(l => l.id === task.linkedLeadId);
+                          return lead ? (
+                            <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-medium truncate max-w-[120px]">
+                              {lead.name}
+                            </span>
+                          ) : null;
+                        })()}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto">
-                {renderTaskList(filteredTasks.filter(t => t.priority === 'schedule'))}
-              </div>
-            </Card>
+            </div>
 
-            <Card className="glass border-amber-500/20 flex flex-col overflow-hidden">
-              <div className="p-3 border-b border-border/50 bg-amber-500/5 font-medium text-sm flex items-center justify-between">
+            {/* Urgent & Not Important (Delegate) */}
+            <div className="w-80 flex flex-col bg-secondary/20 rounded-xl border border-amber-500/20 shadow-sm">
+              <div className="p-3 flex items-center justify-between border-b border-amber-500/20 shrink-0 bg-amber-500/5 rounded-t-xl">
                 <div className="flex items-center gap-2">
                   <UserPlus className="w-4 h-4 text-amber-500" />
-                  <span className="text-amber-500">Urgente & Não Importante (Delegar)</span>
+                  <h3 className="font-medium text-sm text-amber-500">DELEGAR (Urgente, não Importante)</h3>
+                </div>
+                <span className="text-[10px] font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                  {filteredTasks.filter(t => t.priority === 'delegate').length}
+                </span>
+              </div>
+              <div className="flex-1 p-2 overflow-y-auto">
+                <div className="space-y-2">
+                  {filteredTasks.filter(t => t.priority === 'delegate').map(task => (
+                    <div key={task.id} className="bg-card border p-3 rounded-lg shadow-sm group">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2">
+                          <button 
+                            onClick={() => toggleTaskStatus(task.id)}
+                            className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${task.status === 'completed' ? 'bg-primary border-primary text-primary-foreground' : 'border-border hover:border-primary'}`}
+                          >
+                            {task.status === 'completed' && <CheckSquare className="w-2.5 h-2.5" />}
+                          </button>
+                          <p className={`text-sm font-medium cursor-pointer hover:underline ${task.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`} onClick={() => setSelectedTask(task)}>
+                            {task.title}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 mt-2 ml-6">
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded flex items-center gap-1 bg-secondary text-muted-foreground">
+                          <Clock className="w-2.5 h-2.5" /> {task.dueDate}
+                        </span>
+                        {task.linkedLeadId && (() => {
+                          const lead = leads.find(l => l.id === task.linkedLeadId);
+                          return lead ? (
+                            <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-medium truncate max-w-[120px]">
+                              {lead.name}
+                            </span>
+                          ) : null;
+                        })()}
+                        <span className="text-[10px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                          <UserPlus className="w-2.5 h-2.5"/> {task.responsibleUser}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto">
-                {renderTaskList(filteredTasks.filter(t => t.priority === 'delegate'))}
-              </div>
-            </Card>
+            </div>
 
-            <Card className="glass border-border/50 flex flex-col overflow-hidden">
-              <div className="p-3 border-b border-border/50 bg-secondary/30 font-medium text-sm flex items-center justify-between">
+            {/* Not Urgent & Not Important (Eliminate) */}
+            <div className="w-80 flex flex-col bg-secondary/20 rounded-xl border border-border/50 shadow-sm">
+              <div className="p-3 flex items-center justify-between border-b border-border/50 shrink-0 bg-secondary/30 rounded-t-xl">
                 <div className="flex items-center gap-2">
                   <XCircle className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Não Urgente & Não Importante (Eliminar)</span>
+                  <h3 className="font-medium text-sm text-muted-foreground">ELIMINAR (Não Importante, não Urgente)</h3>
+                </div>
+                <span className="text-[10px] font-medium text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
+                  {filteredTasks.filter(t => t.priority === 'eliminate').length}
+                </span>
+              </div>
+              <div className="flex-1 p-2 overflow-y-auto">
+                <div className="space-y-2">
+                  {filteredTasks.filter(t => t.priority === 'eliminate').map(task => (
+                    <div key={task.id} className="bg-card border p-3 rounded-lg shadow-sm group opacity-75">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2">
+                          <button 
+                            onClick={() => toggleTaskStatus(task.id)}
+                            className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${task.status === 'completed' ? 'bg-primary border-primary text-primary-foreground' : 'border-border hover:border-primary'}`}
+                          >
+                            {task.status === 'completed' && <CheckSquare className="w-2.5 h-2.5" />}
+                          </button>
+                          <p className={`text-sm font-medium cursor-pointer hover:underline ${task.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`} onClick={() => setSelectedTask(task)}>
+                            {task.title}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 mt-2 ml-6">
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded flex items-center gap-1 bg-secondary text-muted-foreground">
+                          <Clock className="w-2.5 h-2.5" /> {task.dueDate}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto">
-                {renderTaskList(filteredTasks.filter(t => t.priority === 'eliminate'))}
-              </div>
-            </Card>
+            </div>
           </div>
         )}
       </div>
