@@ -15,42 +15,43 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/scheduling", label: "Scheduling", icon: Clock },
-  { href: "/crm", label: "CRM Pipeline", icon: Users },
-  { href: "/tasks", label: "Tasks", icon: CheckSquare },
-  { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/agendamento", label: "Agendamentos", icon: Clock },
+  { href: "/crm", label: "Pipeline CRM", icon: Users },
+  { href: "/tarefas", label: "Tarefas", icon: CheckSquare },
+  { href: "/calendario", label: "Calendário", icon: CalendarDays },
 ];
 
 export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: boolean) => void }) {
   const [location] = useLocation();
 
   return (
-    <aside className={`fixed inset-y-0 left-0 z-50 w-64 glass border-r transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex flex-col ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+    <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex flex-col ${open ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="p-6 flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl">
           O
         </div>
-        <span className="font-heading font-bold text-xl tracking-tight">Olivar OS</span>
+        <span className="font-heading font-semibold text-lg tracking-tight">Olivar OS</span>
       </div>
 
       <div className="px-4 pb-4">
-        <Button className="w-full justify-start gap-2 shadow-sm" size="lg">
+        <Button className="w-full justify-start gap-2 shadow-sm" size="default">
           <Plus className="w-4 h-4" />
-          <span>New Action</span>
+          <span>Nova Ação</span>
         </Button>
       </div>
 
-      <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = location === item.href;
           const Icon = item.icon;
           return (
             <Link key={item.href} href={item.href}>
-              <a className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${isActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
-                <Icon className="w-5 h-5" />
+              <a className={`flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${isActive ? 'bg-secondary text-foreground font-medium' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}>
+                <Icon className="w-4 h-4" />
                 <span>{item.label}</span>
               </a>
             </Link>
@@ -58,11 +59,11 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: bool
         })}
       </nav>
 
-      <div className="p-4 mt-auto border-t">
+      <div className="p-3 mt-auto border-t">
         <Link href="/settings">
-          <a className="flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
-            <Settings className="w-5 h-5" />
-            <span>Settings</span>
+          <a className="flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors text-muted-foreground hover:bg-secondary/50 hover:text-foreground">
+            <Settings className="w-4 h-4" />
+            <span>Configurações</span>
           </a>
         </Link>
       </div>
@@ -72,23 +73,25 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: bool
 
 export function Topbar({ setSidebarOpen }: { setSidebarOpen: (open: boolean) => void }) {
   return (
-    <header className="h-16 glass border-b flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
+    <header className="h-14 bg-background border-b flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen(true)}>
           <Menu className="w-5 h-5" />
         </Button>
         <div className="relative hidden md:block w-64">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search anything..." className="pl-9 bg-muted/50 border-transparent focus-visible:bg-background" />
+          <Input placeholder="Buscar em tudo..." className="pl-9 h-9 bg-secondary/50 border-transparent focus-visible:bg-background" />
         </div>
       </div>
 
-      <div className="flex items-center gap-3 md:gap-4">
+      <div className="flex items-center gap-2 md:gap-3">
+        <ThemeToggle />
         <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full border-2 border-background"></span>
+          <Bell className="w-4 h-4" />
+          <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-destructive rounded-full"></span>
         </Button>
-        <Avatar className="w-8 h-8 cursor-pointer ring-2 ring-transparent hover:ring-primary/20 transition-all">
+        <div className="h-4 w-px bg-border mx-1"></div>
+        <Avatar className="w-7 h-7 cursor-pointer hover:opacity-80 transition-all">
           <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026024d" />
           <AvatarFallback>JD</AvatarFallback>
         </Avatar>
@@ -115,7 +118,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 flex flex-col min-w-0">
         <Topbar setSidebarOpen={setSidebarOpen} />
         <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-          <div className="max-w-6xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="max-w-5xl mx-auto w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
             {children}
           </div>
         </div>
