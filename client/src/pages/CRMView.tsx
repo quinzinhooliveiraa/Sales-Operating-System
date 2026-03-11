@@ -121,7 +121,7 @@ export default function CRMView() {
   const handleAddTouch = (stageId: string) => {
     setStages(stages.map(s => {
       if (s.id === stageId) {
-        return { ...s, cadence: [...s.cadence, { type: 'email', intervalHours: 24 }] };
+        return { ...s, cadence: [...s.cadence, { type: 'email', intervalValue: 1, intervalUnit: 'days' }] };
       }
       return s;
     }));
@@ -142,7 +142,7 @@ export default function CRMView() {
     setStages(stages.map(s => {
       if (s.id === stageId) {
         const newCadence = [...s.cadence];
-        newCadence[touchIndex] = { ...newCadence[touchIndex], [field]: field === 'intervalHours' ? Number(value) : value };
+        newCadence[touchIndex] = { ...newCadence[touchIndex], [field]: field === 'intervalValue' ? Number(value) : value };
         return { ...s, cadence: newCadence };
       }
       return s;
@@ -816,7 +816,7 @@ export default function CRMView() {
                                 if (count > 0) {
                                   let currentTouches = [...stage.cadence];
                                   for(let i=0; i<count; i++) {
-                                    currentTouches.push({ type: 'email', intervalHours: 24 });
+                                    currentTouches.push({ type: 'email', intervalValue: 1, intervalUnit: 'days' });
                                   }
                                   setStages(stages.map(s => s.id === stage.id ? { ...s, cadence: currentTouches } : s));
                                 }

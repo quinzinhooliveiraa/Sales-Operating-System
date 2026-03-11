@@ -17,7 +17,8 @@ export type Task = {
 
 export type CadenceAction = {
   type: 'call' | 'email' | 'message';
-  intervalHours: number;
+  intervalValue: number;
+  intervalUnit: 'minutes' | 'hours' | 'days' | 'months' | 'years';
 };
 
 export type Stage = {
@@ -90,10 +91,10 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const INITIAL_STAGES: Stage[] = [
-  { id: 'new', name: 'Novos Leads', scenarioType: 'Cold call funnel', cadence: [{ type: 'email', intervalHours: 0 }, { type: 'call', intervalHours: 24 }] },
-  { id: 'qualified', name: 'Qualificados', scenarioType: 'Meeting follow-up funnel', cadence: [{ type: 'call', intervalHours: 48 }] },
+  { id: 'new', name: 'Novos Leads', scenarioType: 'Cold call funnel', cadence: [{ type: 'email', intervalValue: 0, intervalUnit: 'minutes' }, { type: 'call', intervalValue: 1, intervalUnit: 'days' }] },
+  { id: 'qualified', name: 'Qualificados', scenarioType: 'Meeting follow-up funnel', cadence: [{ type: 'call', intervalValue: 2, intervalUnit: 'days' }] },
   { id: 'demo', name: 'Demo Agendada', cadence: [] },
-  { id: 'negotiation', name: 'Negociação', cadence: [{ type: 'email', intervalHours: 72 }, { type: 'call', intervalHours: 120 }] },
+  { id: 'negotiation', name: 'Negociação', cadence: [{ type: 'email', intervalValue: 3, intervalUnit: 'days' }, { type: 'call', intervalValue: 5, intervalUnit: 'days' }] },
   { id: 'won', name: 'Fechado/Ganho', cadence: [] },
 ];
 
@@ -176,7 +177,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (stage && stage.cadence && stage.cadence.length > 0) {
       stage.cadence.forEach((action, idx) => {
         const d = new Date();
-        d.setDate(d.getDate() + action.intervalHours / 24);
+        if (action.intervalUnit === 'minutes') d.setMinutes(d.getMinutes() + action.intervalValue);
+        else if (action.intervalUnit === 'hours') d.setHours(d.getHours() + action.intervalValue);
+        else if (action.intervalUnit === 'days') d.setDate(d.getDate() + action.intervalValue);
+        else if (action.intervalUnit === 'months') d.setMonth(d.getMonth() + action.intervalValue);
+        else if (action.intervalUnit === 'years') d.setFullYear(d.getFullYear() + action.intervalValue);
         const actionText = action.type === 'call' ? 'Ligar para' : action.type === 'email' ? 'Email para' : 'Mensagem para';
         const newTask = addTask({
           title: `${actionText} ${newLead.name} (Touch ${idx + 1})`,
@@ -216,7 +221,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (stage && stage.cadence.length > 0) {
       stage.cadence.forEach((action, idx) => {
         const d = new Date();
-        d.setDate(d.getDate() + action.intervalHours / 24);
+        if (action.intervalUnit === 'minutes') d.setMinutes(d.getMinutes() + action.intervalValue);
+        else if (action.intervalUnit === 'hours') d.setHours(d.getHours() + action.intervalValue);
+        else if (action.intervalUnit === 'days') d.setDate(d.getDate() + action.intervalValue);
+        else if (action.intervalUnit === 'months') d.setMonth(d.getMonth() + action.intervalValue);
+        else if (action.intervalUnit === 'years') d.setFullYear(d.getFullYear() + action.intervalValue);
         const actionText = action.type === 'call' ? 'Ligar para' : action.type === 'email' ? 'Email para' : 'Mensagem para';
         const lead = leads.find(l => l.id === leadId);
         const newTask = addTask({
