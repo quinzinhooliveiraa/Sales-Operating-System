@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+const fs = require('fs');
+
+const content = `import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, Search, Plus, Menu, Settings, HelpCircle, User, Grid, Globe } from "lucide-react";
@@ -11,37 +13,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay, startOfMonth, endOfMonth, getDaysInMonth, addMonths, subMonths, addHours } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
 
 export default function CalendarView() {
   const { events } = useAppContext();
   const [view, setView] = useState<'month'|'week'|'day'>('week');
-  const [selectedEvent, setSelectedEvent] = useState<any>(null);
-  const [isEventSheetOpen, setIsEventSheetOpen] = useState(false);
-  
-  const [isCreateMeetingOpen, setIsCreateMeetingOpen] = useState(false);
-  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
-  const [isLinkLeadOpen, setIsLinkLeadOpen] = useState(false);
-
-  const handleEventClick = (event: any) => {
-    setSelectedEvent(event);
-    setIsEventSheetOpen(true);
-  };
-
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
   
@@ -91,7 +66,7 @@ export default function CalendarView() {
       if (start.getMonth() === end.getMonth()) {
         return format(start, "MMMM yyyy", { locale: ptBR });
       }
-      return `${format(start, "MMM", { locale: ptBR })} - ${format(end, "MMM yyyy", { locale: ptBR })}`;
+      return \`\${format(start, "MMM", { locale: ptBR })} - \${format(end, "MMM yyyy", { locale: ptBR })}\`;
     }
     return format(currentDate, "MMMM yyyy", { locale: ptBR });
   };
@@ -151,7 +126,7 @@ export default function CalendarView() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden min-h-0">
+      <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar */}
         <div className="w-[256px] flex flex-col hidden lg:flex shrink-0 bg-background border-r border-border/50">
           <div className="p-3 pl-2">
@@ -163,9 +138,9 @@ export default function CalendarView() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem className="cursor-pointer" onClick={() => setIsCreateMeetingOpen(true)}>Agendar Reunião</DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer" onClick={() => setIsCreateTaskOpen(true)}>Nova Tarefa</DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer" onClick={() => setIsLinkLeadOpen(true)}>Vincular a Lead CRM</DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer">Agendar Reunião</DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer">Nova Tarefa</DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer">Vincular a Lead CRM</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -200,7 +175,7 @@ export default function CalendarView() {
                     <div 
                       key={i} 
                       onClick={() => { if(isCurrentMonth) setCurrentDate(d) }}
-                      className={`p-1 flex items-center justify-center rounded-full ${!isCurrentMonth ? 'text-muted-foreground/40' : 'hover:bg-secondary/50 cursor-pointer'} ${isToday ? 'bg-primary text-white font-medium hover:bg-primary/90' : ''} ${isSelected && !isToday ? 'bg-primary/20 text-primary font-bold' : ''} w-6 h-6 mx-auto`}
+                      className={\`p-1 flex items-center justify-center rounded-full \${!isCurrentMonth ? 'text-muted-foreground/40' : 'hover:bg-secondary/50 cursor-pointer'} \${isToday ? 'bg-primary text-white font-medium hover:bg-primary/90' : ''} \${isSelected && !isToday ? 'bg-primary/20 text-primary font-bold' : ''} w-6 h-6 mx-auto\`}
                     >
                       {isCurrentMonth ? dayNum : new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum).getDate()}
                     </div>
@@ -263,7 +238,7 @@ export default function CalendarView() {
         </div>
 
         {/* Calendar Grid Area */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-background relative min-w-0">
+        <div className="flex-1 flex flex-col overflow-hidden bg-background relative">
           
           {view === 'month' ? (
             <div className="flex-1 flex flex-col p-4 overflow-y-auto">
@@ -296,10 +271,10 @@ export default function CalendarView() {
                   const isToday = isSameDay(day, new Date());
                   return (
                   <div key={i} className="flex-1 text-center border-l border-border/50 min-w-[100px] flex flex-col items-center justify-center pt-2">
-                    <span className={`text-[11px] font-medium uppercase mb-1 ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <span className={\`text-[11px] font-medium uppercase mb-1 \${isToday ? 'text-primary' : 'text-muted-foreground'}\`}>
                       {format(day, 'E', { locale: ptBR })}
                     </span>
-                    <div className={`text-2xl w-12 h-12 flex items-center justify-center rounded-full hover:bg-secondary/50 cursor-pointer transition-colors ${isToday ? 'bg-primary text-white hover:bg-primary/90' : 'text-foreground'}`}>
+                    <div className={\`text-2xl w-12 h-12 flex items-center justify-center rounded-full hover:bg-secondary/50 cursor-pointer transition-colors \${isToday ? 'bg-primary text-white hover:bg-primary/90' : 'text-foreground'}\`}>
                       {format(day, 'd')}
                     </div>
                   </div>
@@ -316,7 +291,7 @@ export default function CalendarView() {
                     </div>
                     {hours.map(hour => (
                       <div key={hour} className="h-[60px] text-[10px] text-muted-foreground text-right pr-2 relative -top-2.5 font-medium">
-                        {hour === 0 ? '' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour-12} PM`}
+                        {hour === 0 ? '' : hour < 12 ? \`\${hour} AM\` : hour === 12 ? '12 PM' : \`\${hour-12} PM\`}
                       </div>
                     ))}
                   </div>
@@ -324,7 +299,7 @@ export default function CalendarView() {
                   {/* All day row grid */}
                   <div className="absolute top-0 left-16 right-0 flex h-6 border-b border-border/50 bg-background z-10">
                     {daysToRender.map((day, i) => (
-                      <div key={`allday-${i}`} className="flex-1 border-l border-border/50 min-w-[100px]"></div>
+                      <div key={\`allday-\${i}\`} className="flex-1 border-l border-border/50 min-w-[100px]"></div>
                     ))}
                   </div>
 
@@ -334,7 +309,7 @@ export default function CalendarView() {
                       const isToday = isSameDay(day, new Date());
                       
                       return (
-                      <div key={`grid-${dayIndex}`} className="flex-1 border-l border-border/50 relative min-w-[100px]">
+                      <div key={\`grid-\${dayIndex}\`} className="flex-1 border-l border-border/50 relative min-w-[100px]">
                         {hours.map(hour => (
                           <div key={hour} className="h-[60px] border-b border-border/50 hover:bg-secondary/50 cursor-pointer transition-colors relative group">
                             {/* Half hour line (visible on hover) */}
@@ -360,11 +335,10 @@ export default function CalendarView() {
                           return (
                             <div 
                               key={event.id}
-                              className={`absolute left-0 right-3 rounded-md px-2 py-1 mx-1 ${style} text-white shadow-sm cursor-pointer hover:shadow-md transition-all text-xs overflow-hidden border border-white/20`}
-                              onClick={() => handleEventClick(event)}
+                              className={\`absolute left-0 right-3 rounded-md px-2 py-1 mx-1 \${style} text-white shadow-sm cursor-pointer hover:shadow-md transition-all text-xs overflow-hidden border border-white/20\`}
                               style={{ 
-                                top: `${(event.hour) * 60}px`,
-                                height: `${(event.duration) * 60 - 2}px`,
+                                top: \`\${(event.hour) * 60}px\`,
+                                height: \`\${(event.duration) * 60 - 2}px\`,
                                 zIndex: 10
                               }}
                             >
@@ -382,7 +356,7 @@ export default function CalendarView() {
 
                         {/* Current Time Indicator */}
                         {isToday && (
-                          <div className="absolute left-0 right-0 flex items-center z-10" style={{ top: `${currentHourPosition}px` }}>
+                          <div className="absolute left-0 right-0 flex items-center z-10" style={{ top: \`\${currentHourPosition}px\` }}>
                             <div className="w-3 h-3 rounded-full bg-red-500 -ml-[6px]"></div>
                             <div className="h-[2px] bg-red-500 flex-1 shadow-sm"></div>
                           </div>
@@ -396,102 +370,10 @@ export default function CalendarView() {
           )}
         </div>
       </div>
-
-      {/* Event Details Sheet */}
-      <Sheet open={isEventSheetOpen} onOpenChange={setIsEventSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{selectedEvent?.title}</SheetTitle>
-            <SheetDescription>
-              {selectedEvent?.type === 'task' ? 'Tarefa' : selectedEvent?.type === 'crm' ? 'Ação de CRM' : 'Reunião'}
-            </SheetDescription>
-          </SheetHeader>
-          <div className="py-6 space-y-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-muted-foreground">Horário</span>
-              <span>{selectedEvent?.hour}:00 - {selectedEvent?.hour + selectedEvent?.duration}:00</span>
-            </div>
-            {selectedEvent?.description && (
-              <div className="flex flex-col gap-1">
-                <span className="text-sm font-medium text-muted-foreground">Descrição</span>
-                <p className="text-sm">{selectedEvent.description}</p>
-              </div>
-            )}
-            {selectedEvent?.leadName && (
-              <div className="flex flex-col gap-1">
-                <span className="text-sm font-medium text-muted-foreground">Lead Vinculado</span>
-                <p className="text-sm">{selectedEvent.leadName}</p>
-              </div>
-            )}
-            <div className="pt-4 flex gap-2">
-              <Button className="w-full">Editar</Button>
-              <Button variant="outline" className="w-full">Excluir</Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* Create Meeting Dialog */}
-      <Dialog open={isCreateMeetingOpen} onOpenChange={setIsCreateMeetingOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Agendar Nova Reunião</DialogTitle>
-            <DialogDescription>Preencha os detalhes para agendar uma reunião no calendário.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Título da Reunião</label>
-              <Input placeholder="Ex: Call de Alinhamento" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Data</label>
-                <Input type="date" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Horário</label>
-                <Input type="time" />
-              </div>
-            </div>
-            <Button className="w-full" onClick={() => setIsCreateMeetingOpen(false)}>Salvar Reunião</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create Task Dialog */}
-      <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nova Tarefa</DialogTitle>
-            <DialogDescription>Adicione uma tarefa à sua matriz de prioridades.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Descrição da Tarefa</label>
-              <Input placeholder="O que precisa ser feito?" />
-            </div>
-            <Button className="w-full" onClick={() => setIsCreateTaskOpen(false)}>Criar Tarefa</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Link Lead Dialog */}
-      <Dialog open={isLinkLeadOpen} onOpenChange={setIsLinkLeadOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Vincular a Lead CRM</DialogTitle>
-            <DialogDescription>Associe um evento de calendário a uma negociação existente.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Buscar Lead</label>
-              <Input placeholder="Digite o nome da empresa ou contato..." />
-            </div>
-            <Button className="w-full" onClick={() => setIsLinkLeadOpen(false)}>Vincular Lead</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
-
 }
+`;
+
+fs.writeFileSync('client/src/pages/CalendarView.tsx', content);
+console.log('Calendar written');

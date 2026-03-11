@@ -99,6 +99,9 @@ export function Topbar({ setSidebarOpen }: { setSidebarOpen: (open: boolean) => 
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [location] = useLocation();
+  
+  const isFullWidth = location === '/calendario';
 
   return (
     <div className="min-h-screen bg-background flex text-foreground selection:bg-primary/30">
@@ -114,8 +117,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 flex flex-col min-w-0">
         <Topbar setSidebarOpen={setSidebarOpen} />
-        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-          <div className="max-w-5xl mx-auto w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div className={`flex-1 overflow-y-auto ${isFullWidth ? 'p-0' : 'p-4 md:p-8'}`}>
+          <div className={`${isFullWidth ? 'w-full h-full' : 'max-w-5xl mx-auto w-full'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
             {children}
           </div>
         </div>
