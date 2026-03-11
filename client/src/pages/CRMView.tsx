@@ -143,6 +143,16 @@ export default function CRMView() {
     }));
   };
 
+  const calculateScore = (lead: Partial<Lead>) => {
+    let score = 10; // Base score
+    if (lead.email && lead.email.includes('@')) score += 20;
+    if (lead.phone && lead.phone.length > 5) score += 20;
+    if (lead.company && lead.company.length > 2) score += 20;
+    if (lead.notes && lead.notes.length > 10) score += 15;
+    if (lead.stage && lead.stage !== stages[0]?.id) score += 15; // advanced stage bonus
+    return Math.min(score, 99); // Max around 99 for new leads
+  };
+
   const handleAddLead = () => {
     if (!newLead.name) return;
     
@@ -158,7 +168,7 @@ export default function CRMView() {
       owner: newLead.owner || "Quinzinho",
       value: "R$ 0",
       tags: [],
-      score: 50,
+      score: calculateScore(newLead),
       formResponses: {},
       notes: newLead.notes || "",
       history: [{ id: Math.random().toString(), type: 'stage_change', description: 'Lead adicionado', date: new Date().toISOString() }]
@@ -430,7 +440,22 @@ export default function CRMView() {
                   placeholder="Adicione notas sobre o lead..."
                   defaultValue={selectedLead.notes}
                 />
-                <Button size="sm" className="w-full">Salvar Nota</Button>
+                <Button 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => {
+                    const el = document.getElementById('selected-lead-notes') as HTMLTextAreaElement;
+                    if (el && selectedLead) {
+                      const updatedLead = { ...selectedLead, notes: el.value };
+                      updatedLead.score = calculateScore(updatedLead);
+                      
+                      setLeads(leads.map(l => l.id === selectedLead.id ? updatedLead : l));
+                      setSelectedLead(updatedLead);
+                    }
+                  }}
+                >
+                  Salvar Nota e Atualizar Score
+                </Button>
               </div>
             </div>
           )}
