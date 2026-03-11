@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, MoreHorizontal, Clock, DollarSign, Calendar, Target, Activity, MessageSquare, Phone, Mail, Settings2, Trash2, User, X } from "lucide-react";
+import { Plus, MoreHorizontal, Clock, DollarSign, Calendar, Target, Activity, MessageSquare, Phone, Mail, Settings2, Trash2, User, X, Mic, MicOff, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -21,6 +21,29 @@ export default function CRMView() {
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isManagePipelineOpen, setIsManagePipelineOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  
+  const [isRecordingNewLead, setIsRecordingNewLead] = useState(false);
+  const [isRecordingSelectedLead, setIsRecordingSelectedLead] = useState(false);
+
+  const startVoiceRecognition = (onResult: (text: string) => void, onEnd: () => void) => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Seu navegador não suporta gravação de voz.");
+      onEnd();
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'pt-BR';
+    recognition.interimResults = false;
+    
+    recognition.onresult = (event: any) => {
+      const text = event.results[0][0].transcript;
+      onResult(text);
+    };
+    recognition.onerror = () => onEnd();
+    recognition.onend = () => onEnd();
+    recognition.start();
+  };
   
   const handleDragStart = (e: React.DragEvent, leadId: number) => {
     setDraggedLeadId(leadId);
@@ -311,8 +334,33 @@ export default function CRMView() {
               )}
 
               <div className="space-y-3 border-t pt-4">
-                <h3 className="font-semibold flex items-center gap-2 text-sm"><Activity className="w-4 h-4"/> Anotações</h3>
+                <div className="flex justify-between items-center">
+                  <h3 className="font-semibold flex items-center gap-2 text-sm"><Activity className="w-4 h-4"/> Anotações</h3>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    className={`h-8 px-2 text-xs ${isRecordingSelectedLead ? 'text-destructive hover:text-destructive animate-pulse' : 'text-muted-foreground'}`}
+                    onClick={() => {
+                      if (isRecordingSelectedLead) return;
+                      setIsRecordingSelectedLead(true);
+                      startVoiceRecognition(
+                        (text) => {
+                          const el = document.getElementById('selected-lead-notes') as HTMLTextAreaElement;
+                          if (el) {
+                            el.value = el.value ? el.value + " " + text : text;
+                          }
+                          setIsRecordingSelectedLead(false);
+                        },
+                        () => setIsRecordingSelectedLead(false)
+                      );
+                    }}
+                  >
+                    {isRecordingSelectedLead ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin"/> Ouvindo...</> : <><Mic className="w-3.5 h-3.5 mr-1.5"/> Gravar Áudio</>}
+                  </Button>
+                </div>
                 <textarea 
+                  id="selected-lead-notes"
                   className="w-full min-h-[100px] p-3 text-sm rounded-md border bg-background text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                   placeholder="Adicione notas sobre o lead..."
                   defaultValue={selectedLead.notes}
@@ -368,7 +416,28 @@ export default function CRMView() {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Anotações Iniciais</label>
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-medium text-foreground">Anotações Iniciais</label>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  className={`h-8 px-2 text-xs ${isRecordingNewLead ? 'text-destructive hover:text-destructive animate-pulse' : 'text-muted-foreground'}`}
+                  onClick={() => {
+                    if (isRecordingNewLead) return;
+                    setIsRecordingNewLead(true);
+                    startVoiceRecognition(
+                      (text) => {
+                        setNewLead(prev => ({ ...prev, notes: prev.notes ? prev.notes + " " + text : text }));
+                        setIsRecordingNewLead(false);
+                      },
+                      () => setIsRecordingNewLead(false)
+                    );
+                  }}
+                >
+                  {isRecordingNewLead ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin"/> Ouvindo...</> : <><Mic className="w-3.5 h-3.5 mr-1.5"/> Gravar Áudio</>}
+                </Button>
+              </div>
               <textarea 
                 className="w-full min-h-[100px] p-3 text-sm rounded-md border bg-background text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="Detalhes sobre a prospecção..."
