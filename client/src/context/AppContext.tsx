@@ -17,25 +17,39 @@ export type Task = {
 
 export type CadenceAction = {
   type: 'call' | 'email' | 'message';
-  intervalDays: number;
+  intervalHours: number;
 };
 
 export type Stage = {
   id: string;
   name: string;
   cadence: CadenceAction[];
+  scenarioType?: string;
+};
+
+export type LeadActivity = {
+  id: string;
+  type: 'call' | 'meeting' | 'task' | 'stage_change' | 'note';
+  description: string;
+  date: string;
 };
 
 export type Lead = {
   id: number;
   name: string;
-  contact: string;
+  email: string;
+  phone: string;
+  company: string;
   value: string;
   stage: string;
+  owner: string;
   tags: string[];
   score: number;
   formResponses: Record<string, string>;
   notes: string;
+  history: LeadActivity[];
+  meetingDate?: string;
+  nextTask?: string;
 };
 
 export type CalendarEvent = {
@@ -67,19 +81,19 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const INITIAL_STAGES: Stage[] = [
-  { id: 'new', name: 'Novos Leads', cadence: [{ type: 'email', intervalDays: 0 }, { type: 'call', intervalDays: 1 }] },
-  { id: 'qualified', name: 'Qualificados', cadence: [{ type: 'call', intervalDays: 2 }] },
+  { id: 'new', name: 'Novos Leads', scenarioType: 'Cold call funnel', cadence: [{ type: 'email', intervalHours: 0 }, { type: 'call', intervalHours: 24 }] },
+  { id: 'qualified', name: 'Qualificados', scenarioType: 'Meeting follow-up funnel', cadence: [{ type: 'call', intervalHours: 48 }] },
   { id: 'demo', name: 'Demo Agendada', cadence: [] },
-  { id: 'negotiation', name: 'Negociação', cadence: [{ type: 'email', intervalDays: 3 }, { type: 'call', intervalDays: 5 }] },
+  { id: 'negotiation', name: 'Negociação', cadence: [{ type: 'email', intervalHours: 72 }, { type: 'call', intervalHours: 120 }] },
   { id: 'won', name: 'Fechado/Ganho', cadence: [] },
 ];
 
 const INITIAL_LEADS: Lead[] = [
-  { id: 1, name: "Acme Corp", contact: "Sarah M.", value: "R$ 12.000", stage: "new", tags: ["SaaS", "Inbound"], score: 85, formResponses: { "Tamanho da empresa": "50-200", "Desafio": "Vendas inconsistentes" }, notes: "Lead muito interessado, priorizar." },
-  { id: 2, name: "TechFlow", contact: "Mike T.", value: "R$ 5.500", stage: "qualified", tags: ["E-commerce"], score: 62, formResponses: { "Tamanho da empresa": "1-10", "Desafio": "Custo de aquisição alto" }, notes: "" },
-  { id: 3, name: "Global Ind.", contact: "Alex W.", value: "R$ 24.000", stage: "demo", tags: ["Enterprise"], score: 95, formResponses: { "Tamanho da empresa": "500+", "Desafio": "Escalar operação global" }, notes: "Preparar case study similar." },
-  { id: 4, name: "Startup Inc", contact: "John D.", value: "R$ 2.000", stage: "new", tags: ["Outbound"], score: 40, formResponses: {}, notes: "" },
-  { id: 5, name: "Inovação S.A.", contact: "Lisa R.", value: "R$ 8.500", stage: "negotiation", tags: ["SaaS"], score: 78, formResponses: { "Tamanho da empresa": "11-50" }, notes: "Aguardando aprovação do financeiro." },
+  { id: 1, name: "Acme Corp", email: "sarah@acme.com", phone: "+55 11 99999-9999", company: "Acme Corp", value: "R$ 12.000", stage: "new", owner: "Quinzinho", tags: ["SaaS", "Inbound"], score: 85, formResponses: { "Tamanho da empresa": "50-200", "Desafio": "Vendas inconsistentes" }, notes: "Lead muito interessado, priorizar.", history: [{ id: 'h1', type: 'stage_change', description: 'Entrou no pipeline', date: new Date().toISOString() }] },
+  { id: 2, name: "TechFlow", email: "mike@techflow.io", phone: "+55 11 98888-8888", company: "TechFlow", value: "R$ 5.500", stage: "qualified", owner: "João", tags: ["E-commerce"], score: 62, formResponses: { "Tamanho da empresa": "1-10", "Desafio": "Custo de aquisição alto" }, notes: "", history: [] },
+  { id: 3, name: "Global Ind.", email: "alex@globalind.com", phone: "+55 11 97777-7777", company: "Global Industries", value: "R$ 24.000", stage: "demo", owner: "Quinzinho", tags: ["Enterprise"], score: 95, formResponses: { "Tamanho da empresa": "500+", "Desafio": "Escalar operação global" }, notes: "Preparar case study similar.", history: [] },
+  { id: 4, name: "Startup Inc", email: "john@startup.inc", phone: "+55 11 96666-6666", company: "Startup Inc", value: "R$ 2.000", stage: "new", owner: "Maria", tags: ["Outbound"], score: 40, formResponses: {}, notes: "", history: [] },
+  { id: 5, name: "Inovação S.A.", email: "lisa@inovacao.sa", phone: "+55 11 95555-5555", company: "Inovação S.A.", value: "R$ 8.500", stage: "negotiation", owner: "Quinzinho", tags: ["SaaS"], score: 78, formResponses: { "Tamanho da empresa": "11-50" }, notes: "Aguardando aprovação do financeiro.", history: [] },
 ];
 
 const getToday = () => new Date().toISOString().split('T')[0];
@@ -127,7 +141,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (stage && stage.cadence.length > 0) {
       stage.cadence.forEach((action, idx) => {
         const d = new Date();
-        d.setDate(d.getDate() + action.intervalDays);
+        d.setDate(d.getDate() + action.intervalHours / 24);
         const actionText = action.type === 'call' ? 'Ligar para' : action.type === 'email' ? 'Email para' : 'Mensagem para';
         const lead = leads.find(l => l.id === leadId);
         const newTask = addTask({

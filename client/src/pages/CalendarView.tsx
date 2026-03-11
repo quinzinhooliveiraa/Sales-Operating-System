@@ -263,10 +263,10 @@ export default function CalendarView() {
         </div>
 
         {/* Calendar Grid Area */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-background relative min-w-0">
+        <div className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden bg-background relative min-w-0" id="calendar-scroll-area">
           
           {view === 'month' ? (
-            <div className="flex-1 flex flex-col p-4 overflow-y-auto">
+            <div className="flex-1 flex flex-col p-4">
                <div className="grid grid-cols-7 border-t border-l border-border/50 flex-1">
                   {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
                     <div key={d} className="border-r border-b border-border/50 p-2 text-sm font-medium text-muted-foreground text-center">
@@ -283,7 +283,7 @@ export default function CalendarView() {
           ) : (
             <>
               {/* Days Header */}
-              <div className="flex shrink-0 pt-4 pb-2 z-10 bg-background border-b border-border/50">
+              <div className="flex shrink-0 pt-4 pb-2 z-30 bg-background border-b border-border/50 sticky top-0">
                 <div className="w-16 shrink-0 flex flex-col justify-end pb-2">
                   <div className="flex flex-col text-[10px] text-muted-foreground font-medium gap-1 items-end pr-2 cursor-pointer hover:text-foreground">
                     <div className="flex items-center gap-1">
@@ -307,7 +307,7 @@ export default function CalendarView() {
               </div>
 
               {/* Grid Body */}
-              <div className="flex-1 overflow-y-auto relative bg-background" id="calendar-scroll-area">
+              <div className="flex-1 relative bg-background">
                 <div className="flex min-w-full relative h-[1440px]"> {/* 24h * 60px */}
                   {/* Time Column */}
                   <div className="w-16 shrink-0 bg-background sticky left-0 z-20 border-r border-border/50">

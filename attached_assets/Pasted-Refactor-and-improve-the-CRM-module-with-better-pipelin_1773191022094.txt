@@ -1,0 +1,127 @@
+Refactor and improve the CRM module with better pipeline management and cadence configuration.
+
+PIPELINE MANAGEMENT
+
+1. Rename the section "Manage Stages" to:
+
+Manage Pipeline
+
+When the user clicks "Manage Pipeline", they should be taken to a configuration page where they can create and manage the funnel stages.
+
+STAGE CREATION
+
+2. Users must be able to:
+
+• Add new stages
+• Rename stages
+• Reorder stages
+• Delete stages
+
+Example stages:
+
+New Lead
+Qualified Lead
+Contact Attempt
+Meeting Scheduled
+Negotiation
+Closed
+
+CADENCE RULES PER STAGE
+
+3. Each stage must allow configuring cadence rules.
+
+Cadence configuration must include:
+
+Touch Logic (number of attempts)
+
+Provide preset options:
+3
+5
+7
+10
+12
+15
+
+Also allow custom input.
+
+INTERVAL BETWEEN ATTEMPTS
+
+Provide preset intervals:
+
+12 hours
+24 hours
+36 hours
+48 hours
+
+Also allow custom intervals.
+
+SCENARIO TYPES
+
+Allow the user to define the type of cadence scenario.
+
+Example:
+
+• Meeting follow-up funnel
+• Cold call funnel
+
+This allows different cadence logic depending on the pipeline stage.
+
+CRM PIPELINE VIEW
+
+4. Keep the drag-and-drop pipeline.
+
+Users must be able to move lead cards between stages.
+
+When the stage changes, cadence tasks should automatically update.
+
+LEAD CARD PANEL
+
+5. When clicking a lead card, open a detailed lead panel.
+
+The panel must show:
+
+• Lead name
+• Email
+• Phone
+• Lead score (from form responses)
+• Current pipeline stage
+• Responsible owner
+• Next scheduled task
+
+ACTIVITY HISTORY
+
+6. Show a complete history of actions taken with the lead.
+
+Examples:
+
+• calls
+• meetings
+• tasks completed
+• stage changes
+
+NOTES
+
+7. Add a notes section so the team can record important information about the lead.
+
+TASK CREATION
+
+8. Inside the lead card panel the user must be able to:
+
+• create a task
+• schedule a follow-up
+• assign a responsible person
+
+ADD LEAD
+
+9. Improve the "Add Lead" feature.
+
+Users must be able to manually enter:
+
+• Name
+• Email
+• Phone
+• Company
+• Pipeline stage
+• Owner
+
+The form should use the available UI space efficiently without leaving empty areas.
