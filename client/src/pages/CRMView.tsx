@@ -22,6 +22,7 @@ export default function CRMView() {
   const [isManagePipelineOpen, setIsManagePipelineOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   
+  const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
   const [isRecordingNewLead, setIsRecordingNewLead] = useState(false);
   const [isRecordingSelectedLead, setIsRecordingSelectedLead] = useState(false);
 
@@ -61,6 +62,33 @@ export default function CRMView() {
       updateLeadStage(draggedLeadId, stageId);
       setDraggedLeadId(null);
     }
+  };
+
+  const handleStageDragStart = (e: React.DragEvent, stageId: string) => {
+    setDraggedStageId(stageId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleStageDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleStageDrop = (e: React.DragEvent, targetStageId: string) => {
+    e.preventDefault();
+    if (!draggedStageId || draggedStageId === targetStageId) return;
+
+    const draggedIndex = stages.findIndex(s => s.id === draggedStageId);
+    const targetIndex = stages.findIndex(s => s.id === targetStageId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newStages = [...stages];
+    const [draggedStage] = newStages.splice(draggedIndex, 1);
+    newStages.splice(targetIndex, 0, draggedStage);
+    
+    setStages(newStages);
+    setDraggedStageId(null);
   };
 
   const getScoreColor = (score: number) => {
@@ -472,7 +500,7 @@ export default function CRMView() {
             <div className="max-w-5xl mx-auto space-y-6 pb-20">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="font-semibold text-xl text-foreground">Etapas do Funil</h3>
-                <Button className="gap-2 bg-primary text-primary-foreground" onClick={handleAddStage}>s*<Plus className="w-4 h-4"/> Nova Etapas*</Button>
+                <Button className="gap-2 bg-primary text-primary-foreground" onClick={handleAddStage}><Plus className="w-4 h-4"/> Nova Etapa</Button>
               </div>
               
               <div className="space-y-6">
@@ -491,7 +519,7 @@ export default function CRMView() {
                           className="h-11 text-base font-semibold w-full sm:max-w-[350px] bg-background text-foreground" 
                         />
                       </div>
-                      <Button variant="ghost" className="text-destructive hover:bg-destructive/10 gap-2 shrink-0 self-end sm:self-auto" onClick={() => handleRemoveStage(stage.id)}>s*<Trash2 className="w-4 h-4"/> Remover Etapas*</Button>
+                      <Button variant="ghost" className="text-destructive hover:bg-destructive/10 gap-2 shrink-0 self-end sm:self-auto" onClick={() => handleRemoveStage(stage.id)}><Trash2 className="w-4 h-4"/> Remover Etapa</Button>
                     </div>
                     
                     <div className="sm:pl-14 space-y-6">
