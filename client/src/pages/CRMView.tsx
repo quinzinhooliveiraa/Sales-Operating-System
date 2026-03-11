@@ -9,8 +9,13 @@ import { useAppContext } from "@/context/AppContext";
 import type { Lead, Stage, CadenceAction } from "@/context/AppContext";
 
 export default function CRMView() {
-  const { stages, setStages, leads, updateLeadStage } = useAppContext();
+  const { stages, setStages, leads, setLeads, updateLeadStage } = useAppContext();
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
+  
+  // New lead form state
+  const [newLead, setNewLead] = useState<Partial<Lead>>({
+    name: "", company: "", email: "", phone: "", stage: stages[0]?.id || "", owner: "Quinzinho", notes: ""
+  });
   
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
@@ -42,6 +47,11 @@ export default function CRMView() {
   };
 
   // Cadence handlers
+  const handleAddStage = () => {
+    const newStageId = 'stage_' + Math.random().toString(36).substr(2, 9);
+    setStages([...stages, { id: newStageId, name: 'Nova Etapa', cadence: [] }]);
+  };
+
   const handleAddTouch = (stageId: string) => {
     setStages(stages.map(s => {
       if (s.id === stageId) {
@@ -71,6 +81,34 @@ export default function CRMView() {
       }
       return s;
     }));
+  };
+
+  const handleAddLead = () => {
+    if (!newLead.name) return;
+    
+    const lead: Lead = {
+      id: Math.max(0, ...leads.map(l => l.id)) + 1,
+      name: newLead.name || "",
+      company: newLead.company || "",
+      email: newLead.email || "",
+      phone: newLead.phone || "",
+      stage: newLead.stage || stages[0]?.id || "",
+      owner: newLead.owner || "Quinzinho",
+      value: "R$ 0",
+      tags: [],
+      score: 50,
+      formResponses: {},
+      notes: newLead.notes || "",
+      history: [{ id: Math.random().toString(), type: 'stage_change', description: 'Lead adicionado', date: new Date().toISOString() }]
+    };
+    
+    setLeads([...leads, lead]);
+    setIsAddLeadOpen(false);
+    setNewLead({ name: "", company: "", email: "", phone: "", stage: stages[0]?.id || "", owner: "Quinzinho", notes: "" });
+  };
+
+  const handleRemoveStage = (stageId: string) => {
+    setStages(stages.filter(s => s.id !== stageId));
   };
 
   const handleUpdateStage = (stageId: string, field: keyof Stage, value: any) => {
@@ -177,7 +215,7 @@ export default function CRMView() {
           
           {/* Add Stage Button */}
           <div className="w-12 flex flex-col shrink-0">
-            <Button variant="ghost" className="h-full w-full border-2 border-dashed border-border hover:border-primary/50 bg-secondary/10 hover:bg-secondary/30 rounded-xl">
+            <Button variant="ghost" className="h-full w-full border-2 border-dashed border-border hover:border-primary/50 bg-secondary/10 hover:bg-secondary/30 rounded-xl" onClick={handleAddStage}>
               <Plus className="w-4 h-4 text-muted-foreground" />
             </Button>
           </div>
@@ -301,32 +339,32 @@ export default function CRMView() {
           <div className="space-y-5">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Nome</label>
-              <Input placeholder="Ex: João Silva" className="h-10 bg-background text-foreground" />
+              <Input placeholder="Ex: João Silva" className="h-10 bg-background text-foreground" value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Empresa</label>
-              <Input placeholder="Ex: Acme Corp" className="h-10 bg-background text-foreground" />
+              <Input placeholder="Ex: Acme Corp" className="h-10 bg-background text-foreground" value={newLead.company} onChange={e => setNewLead({...newLead, company: e.target.value})} />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Email</label>
-              <Input type="email" placeholder="joao@acme.com" className="h-10 bg-background text-foreground" />
+              <Input type="email" placeholder="joao@acme.com" className="h-10 bg-background text-foreground" value={newLead.email} onChange={e => setNewLead({...newLead, email: e.target.value})} />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Telefone</label>
-              <Input placeholder="+55 11 99999-9999" className="h-10 bg-background text-foreground" />
+              <Input placeholder="+55 11 99999-9999" className="h-10 bg-background text-foreground" value={newLead.phone} onChange={e => setNewLead({...newLead, phone: e.target.value})} />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Etapa do Pipeline</label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-primary">
+              <select className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-primary" value={newLead.stage} onChange={e => setNewLead({...newLead, stage: e.target.value})}>
                 {stages.map(s => <option key={s.id} value={s.id} className="bg-background text-foreground">{s.name}</option>)}
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Responsável</label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-primary">
-                <option className="bg-background text-foreground">Quinzinho</option>
-                <option className="bg-background text-foreground">João</option>
-                <option className="bg-background text-foreground">Maria</option>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-primary" value={newLead.owner} onChange={e => setNewLead({...newLead, owner: e.target.value})}>
+                <option value="Quinzinho" className="bg-background text-foreground">Quinzinho</option>
+                <option value="João" className="bg-background text-foreground">João</option>
+                <option value="Maria" className="bg-background text-foreground">Maria</option>
               </select>
             </div>
             <div className="space-y-2">
@@ -334,6 +372,7 @@ export default function CRMView() {
               <textarea 
                 className="w-full min-h-[100px] p-3 text-sm rounded-md border bg-background text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="Detalhes sobre a prospecção..."
+                value={newLead.notes} onChange={e => setNewLead({...newLead, notes: e.target.value})}
               />
             </div>
             <div className="pt-4 border-t">
@@ -364,9 +403,7 @@ export default function CRMView() {
             <div className="max-w-5xl mx-auto space-y-6 pb-20">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="font-semibold text-xl text-foreground">Etapas do Funil</h3>
-                <Button className="gap-2 bg-primary text-primary-foreground">
-                  <Plus className="w-4 h-4"/> Nova Etapa
-                </Button>
+                <Button className="gap-2 bg-primary text-primary-foreground" onClick={handleAddStage}>s*<Plus className="w-4 h-4"/> Nova Etapas*</Button>
               </div>
               
               <div className="space-y-6">
@@ -385,9 +422,7 @@ export default function CRMView() {
                           className="h-11 text-base font-semibold w-full sm:max-w-[350px] bg-background text-foreground" 
                         />
                       </div>
-                      <Button variant="ghost" className="text-destructive hover:bg-destructive/10 gap-2 shrink-0 self-end sm:self-auto">
-                        <Trash2 className="w-4 h-4"/> Remover Etapa
-                      </Button>
+                      <Button variant="ghost" className="text-destructive hover:bg-destructive/10 gap-2 shrink-0 self-end sm:self-auto" onClick={() => handleRemoveStage(stage.id)}>s*<Trash2 className="w-4 h-4"/> Remover Etapas*</Button>
                     </div>
                     
                     <div className="sm:pl-14 space-y-6">
@@ -407,9 +442,31 @@ export default function CRMView() {
                       <div className="space-y-3 pt-2">
                         <div className="flex flex-wrap justify-between items-center w-full gap-3">
                           <h4 className="text-sm font-medium text-foreground">Cadência (Touches)</h4>
-                          <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={() => handleAddTouch(stage.id)}>
-                             <Plus className="w-3.5 h-3.5" /> Adicionar Touch
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <select 
+                              className="h-8 rounded-md border border-input bg-background text-xs px-2 focus:outline-none"
+                              onChange={(e) => {
+                                const count = parseInt(e.target.value);
+                                if (count > 0) {
+                                  let currentTouches = [...stage.cadence];
+                                  for(let i=0; i<count; i++) {
+                                    currentTouches.push({ type: 'email', intervalHours: 24 });
+                                  }
+                                  setStages(stages.map(s => s.id === stage.id ? { ...s, cadence: currentTouches } : s));
+                                }
+                                e.target.value = "";
+                              }}
+                            >
+                              <option value="">Adicionar múltiplos...</option>
+                              <option value="3">Adicionar 3 touches</option>
+                              <option value="5">Adicionar 5 touches</option>
+                              <option value="7">Adicionar 7 touches</option>
+                              <option value="10">Adicionar 10 touches</option>
+                            </select>
+                            <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={() => handleAddTouch(stage.id)}>
+                               <Plus className="w-3.5 h-3.5" /> 1 Touch
+                            </Button>
+                          </div>
                         </div>
                         
                         <div className="w-full">
