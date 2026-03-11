@@ -93,7 +93,7 @@ export default function CalendarView() {
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
   // Generate days based on view
-  let daysToRender = [];
+  let daysToRender: any[] = [];
   if (view === 'day') {
     daysToRender = [currentDate];
   } else if (view === 'week') {
@@ -373,7 +373,7 @@ export default function CalendarView() {
 
                           let eventColor = 'bg-blue-500';
                           if (event.type === 'task') eventColor = 'bg-emerald-500';
-                          if (event.type === 'crm') eventColor = 'bg-purple-500';
+                          if (event.type === 'task') eventColor = 'bg-purple-500';
                           
                           const style = event.style || eventColor;
 
@@ -390,7 +390,7 @@ export default function CalendarView() {
                             >
                               <div className="font-medium truncate leading-tight text-white flex items-center gap-1">
                                 {event.type === 'task' && <div className="w-1.5 h-1.5 rounded-full bg-white/80" />}
-                                {event.type === 'crm' && <div className="w-1.5 h-1.5 rounded-sm bg-white/80" />}
+                                {event.type === 'task' && <div className="w-1.5 h-1.5 rounded-sm bg-white/80" />}
                                 {event.title}
                               </div>
                               <div className="text-[10px] mt-0.5 text-white/90 leading-tight">

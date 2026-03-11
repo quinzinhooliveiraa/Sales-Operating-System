@@ -6,8 +6,17 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 import { useAppContext } from "@/context/AppContext";
 
+const getTranslations = (lang: string) => {
+  switch(lang) {
+    case 'en-US': return { greeting: "Good morning", pipeline: "Pipeline Overview", overdue: "overdue follow-ups", meetings: "Upcoming Meetings", newLeads: "New Leads", tasks: "Pending Tasks" };
+    case 'es-ES': return { greeting: "Buenos días", pipeline: "Resumen del Pipeline", overdue: "seguimientos atrasados", meetings: "Próximas Reuniones", newLeads: "Nuevos Leads", tasks: "Tareas Pendientes" };
+    default: return { greeting: "Bom dia", pipeline: "Visão Geral do Pipeline", overdue: "follow-ups atrasados", meetings: "Próximas Reuniões", newLeads: "Novos Leads", tasks: "Tarefas Pendentes" };
+  }
+};
+
 export default function Dashboard() {
-  const { leads, tasks, events } = useAppContext();
+  const { leads, tasks, events, settings } = useAppContext();
+  const t = getTranslations(settings?.language || 'pt-BR');
   
   // Calculate overdue touches based on tasks
   const pendingCadenceTasks = tasks.filter(t => t.type === 'Cadência Automática' && t.status === 'pending');
@@ -20,12 +29,17 @@ export default function Dashboard() {
   const [timeFilter, setTimeFilter] = useState<'day' | 'week' | 'month'>('week');
 
   const getMetrics = () => {
-    switch (timeFilter) {
-      case 'day': return { leads: 4, meetings: 2, conversion: "18%", trend: "up" };
-      case 'month': return { leads: 124, meetings: 45, conversion: "26%", trend: "up" };
-      case 'week':
-      default: return { leads: 24, meetings: 8, conversion: "22%", trend: "down" };
-    }
+    const today = new Date().toISOString().split('T')[0];
+    const newLeadsCount = leads.filter(l => l.stage === 'new').length;
+    const allLeadsCount = leads.length;
+    
+    // Dynamic calculation
+    return { 
+      leads: timeFilter === 'day' ? newLeadsCount : allLeadsCount, 
+      meetings: events.filter(e => e.type === 'meeting').length, 
+      conversion: leads.filter(l => l.stage === 'won').length > 0 ? Math.round((leads.filter(l => l.stage === 'won').length / Math.max(allLeadsCount, 1)) * 100) + "%" : "0%", 
+      trend: "up" 
+    };
   };
 
   const metrics = getMetrics();
@@ -114,7 +128,7 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-semibold text-destructive">12</div>
+            <div className="text-2xl font-semibold text-destructive">{tasks.filter(t => t.status === 'pending').length}</div>
             <p className="text-xs text-destructive/80 font-medium mt-1">{overdueTouches} follow-ups atrasados</p>
           </CardContent>
         </Card>
@@ -131,12 +145,17 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              {[
-                { time: "Atrasado", title: "Ligar para Acme Corp (Touch 2)", type: "call", priority: "high", contact: "Sarah M." },
-                { time: "10:00", title: "Enviar email de follow-up: TechFlow (Touch 3)", type: "email", priority: "medium", contact: "Mike T." },
-                { time: "14:00", title: "Mensagem no LinkedIn para Global Ind.", type: "message", priority: "low", contact: "Alex W." },
-                { time: "16:00", title: "Revisar proposta Inovação S.A.", type: "task", priority: "high", contact: "Lisa R." },
-              ].map((item, i) => (
+              {tasks.filter(t => t.status === 'pending').slice(0, 5).map(t => {
+                const lead = leads.find(l => l.id === t.linkedLeadId);
+                return {
+                  id: t.id,
+                  time: t.dueDate < today ? "Atrasado" : "Hoje",
+                  title: t.title,
+                  type: t.title.toLowerCase().includes('ligar') ? 'call' : t.title.toLowerCase().includes('email') ? 'email' : 'task',
+                  priority: t.priority === 'do-now' ? 'high' : 'medium',
+                  contact: lead ? lead.name : "N/A"
+                };
+              }).map((item, i) => (
                 <div key={i} className="flex items-center gap-3 p-3 rounded-md hover:bg-secondary/50 transition-colors border border-transparent hover:border-border/50 group">
                   <button className="w-4 h-4 rounded border flex items-center justify-center shrink-0 border-border hover:border-primary transition-colors" />
                   
@@ -167,11 +186,19 @@ export default function Dashboard() {
             <CardDescription>Sua agenda para os próximos dias</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {[
-              { day: "Hoje", time: "11:30", title: "Call de Descoberta", contact: "Sarah M.", company: "Acme Corp" },
-              { day: "Amanhã", time: "14:00", title: "Demo de Produto", contact: "Mike T.", company: "TechFlow" },
-              { day: "Qui, 15", time: "10:00", title: "Revisão de Contrato", contact: "Lisa R.", company: "Inovação S.A." },
-            ].map((item, i) => (
+            {events.filter(e => e.type === 'meeting' && e.date >= today).sort((a,b) => a.date.localeCompare(b.date)).slice(0, 4).map(e => {
+              const lead = leads.find(l => l.id === e.linkedLeadId);
+              const eventDate = new Date(e.date);
+              const isToday = e.date === today;
+              
+              return {
+                day: isToday ? "Hoje" : eventDate.getDate().toString().padStart(2, '0') + '/' + (eventDate.getMonth() + 1).toString().padStart(2, '0'),
+                time: `${e.hour}:00`,
+                title: e.title,
+                contact: lead ? lead.name : "Lead",
+                company: lead ? lead.company : "N/A"
+              };
+            }).map((item, i) => (
               <div key={i} className="flex gap-4 p-3 rounded-lg bg-secondary/30 border border-border/50">
                 <div className="flex flex-col items-center justify-center bg-background rounded-md w-12 h-12 shrink-0 border border-border">
                   <span className="text-[10px] text-muted-foreground uppercase">{item.day}</span>

@@ -13,21 +13,35 @@ import {
   Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAppContext } from "@/context/AppContext";
+import { Globe, DollarSign } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import logoImage from "@assets/ChatGPT_Image_27_de_nov._de_2025,_16_43_05_1773182905923.png";
 
-const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/agendamento", label: "Agendamentos", icon: Clock },
-  { href: "/crm", label: "Pipeline CRM", icon: Users },
-  { href: "/tarefas", label: "Tarefas", icon: CheckSquare },
-  { href: "/calendario", label: "Calendário", icon: CalendarDays },
-];
+const getTranslations = (lang: string) => {
+  switch(lang) {
+    case 'en-US': return { dashboard: "Dashboard", scheduling: "Scheduling", crm: "CRM Pipeline", tasks: "Tasks", calendar: "Calendar", settings: "Settings" };
+    case 'es-ES': return { dashboard: "Panel", scheduling: "Citas", crm: "Pipeline CRM", tasks: "Tareas", calendar: "Calendario", settings: "Ajustes" };
+    default: return { dashboard: "Dashboard", scheduling: "Agendamentos", crm: "Pipeline CRM", tasks: "Tarefas", calendar: "Calendário", settings: "Configurações" };
+  }
+};
 
 export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: boolean) => void }) {
   const [location] = useLocation();
+  const { settings } = useAppContext();
+  const lang = settings?.language || 'pt-BR';
+  const t = getTranslations(lang);
+  
+  const navItems = [
+    { href: "/", label: t.dashboard, icon: LayoutDashboard },
+    { href: "/agendamento", label: t.scheduling, icon: Clock },
+    { href: "/crm", label: t.crm, icon: Users },
+    { href: "/tarefas", label: t.tasks, icon: CheckSquare },
+    { href: "/calendario", label: t.calendar, icon: CalendarDays },
+  ];
 
   return (
     <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex flex-col ${open ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -54,7 +68,7 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: bool
       <div className="p-3 mt-auto border-t">
         <Link href="/settings" className="flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors text-muted-foreground hover:bg-secondary/50 hover:text-foreground">
           <Settings className="w-4 h-4" />
-          <span>Configurações</span>
+          <span>{t.settings}</span>
         </Link>
       </div>
     </aside>
@@ -62,6 +76,7 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: bool
 }
 
 export function Topbar({ setSidebarOpen }: { setSidebarOpen: (open: boolean) => void }) {
+  const { settings, setSettings } = useAppContext();
   return (
     <header className="h-14 bg-background border-b flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
       <div className="flex items-center gap-4">
@@ -81,10 +96,34 @@ export function Topbar({ setSidebarOpen }: { setSidebarOpen: (open: boolean) => 
           <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-primary rounded-full"></span>
         </Button>
         <div className="h-4 w-px bg-border mx-1"></div>
-        <Avatar className="w-7 h-7 cursor-pointer hover:opacity-80 transition-all border border-border">
-          <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026024d" />
-          <AvatarFallback>JD</AvatarFallback>
-        </Avatar>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Avatar className="w-7 h-7 cursor-pointer hover:opacity-80 transition-all border border-border">
+              <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026024d" />
+              <AvatarFallback>JD</AvatarFallback>
+            </Avatar>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Perfil</DropdownMenuItem>
+            
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs text-muted-foreground flex items-center gap-2"><Globe className="w-3 h-3" /> Idioma</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => setSettings({...settings, language: 'pt-BR'})} className={settings?.language === 'pt-BR' ? 'bg-secondary' : ''}>Português (BR)</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSettings({...settings, language: 'en-US'})} className={settings?.language === 'en-US' ? 'bg-secondary' : ''}>English (US)</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSettings({...settings, language: 'es-ES'})} className={settings?.language === 'es-ES' ? 'bg-secondary' : ''}>Español (ES)</DropdownMenuItem>
+            
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs text-muted-foreground flex items-center gap-2"><DollarSign className="w-3 h-3" /> Moeda</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => setSettings({...settings, currency: 'BRL'})} className={settings?.currency === 'BRL' ? 'bg-secondary' : ''}>BRL (R$)</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSettings({...settings, currency: 'USD'})} className={settings?.currency === 'USD' ? 'bg-secondary' : ''}>USD ($)</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSettings({...settings, currency: 'EUR'})} className={settings?.currency === 'EUR' ? 'bg-secondary' : ''}>EUR (€)</DropdownMenuItem>
+            
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Sair</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

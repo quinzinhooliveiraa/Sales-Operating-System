@@ -71,7 +71,7 @@ export type CalendarEvent = {
 
 interface AppContextType {
   settings: UserSettings;
-  setSettings: (settings: UserSettings) => void;
+  setSettings: (settings: UserSettings | ((prev: UserSettings) => UserSettings)) => void;
   stages: Stage[];
   setStages: (stages: Stage[]) => void;
   leads: Lead[];
@@ -126,6 +126,16 @@ const INITIAL_EVENTS: CalendarEvent[] = [
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [settings, setSettings] = useState<UserSettings>({ language: 'pt-BR', currency: 'BRL' });
+
+  const handleSetSettings = (newSettings: UserSettings | ((prev: UserSettings) => UserSettings)) => {
+    setSettings(prev => {
+      const next = typeof newSettings === 'function' ? newSettings(prev) : newSettings;
+      if (next && next.language) {
+        document.documentElement.lang = next.language.split('-')[0];
+      }
+      return next;
+    });
+  };
   const [stages, setStages] = useState<Stage[]>(INITIAL_STAGES);
   const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS);
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
@@ -133,12 +143,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   
   const formatCurrency = (value: number | string) => {
+    if (!value) return "R$ 0";
     const num = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]+/g, "")) : value;
-    if (isNaN(num)) return value.toString();
+    if (isNaN(num)) return typeof value === 'string' ? value : value.toString();
     
-    return new Intl.NumberFormat(settings.language, {
+    return new Intl.NumberFormat(settings?.language || 'pt-BR', {
       style: 'currency',
-      currency: settings.currency,
+      currency: settings?.currency || 'BRL',
       maximumFractionDigits: 0
     }).format(num);
   };
@@ -236,7 +247,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AppContext.Provider value={{ settings, setSettings, stages, setStages, leads, setLeads, tasks, setTasks, events, setEvents, updateLeadStage, addTask, addEvent, addLead, formatCurrency }}>
+    <AppContext.Provider value={{ settings, setSettings: handleSetSettings, stages, setStages, leads, setLeads, tasks, setTasks, events, setEvents, updateLeadStage, addTask, addEvent, addLead, formatCurrency }}>
       {children}
     </AppContext.Provider>
   );
