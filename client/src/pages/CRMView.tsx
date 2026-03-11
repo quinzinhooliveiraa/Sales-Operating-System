@@ -1,19 +1,18 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, MoreHorizontal, Clock, DollarSign, Calendar, Target, Activity, MessageSquare, Phone, Mail, Settings2, Trash2, User } from "lucide-react";
+import { Plus, MoreHorizontal, Clock, DollarSign, Calendar, Target, Activity, MessageSquare, Phone, Mail, Settings2, Trash2, User, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAppContext } from "@/context/AppContext";
-import type { Lead, Stage } from "@/context/AppContext";
+import type { Lead, Stage, CadenceAction } from "@/context/AppContext";
 
 export default function CRMView() {
   const { stages, setStages, leads, updateLeadStage } = useAppContext();
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
   
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [editingStage, setEditingStage] = useState<Stage | null>(null);
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isManagePipelineOpen, setIsManagePipelineOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
@@ -40,6 +39,47 @@ export default function CRMView() {
     if (score >= 80) return "text-emerald-500 bg-emerald-500/10";
     if (score >= 60) return "text-amber-500 bg-amber-500/10";
     return "text-muted-foreground bg-secondary";
+  };
+
+  // Cadence handlers
+  const handleAddTouch = (stageId: string) => {
+    setStages(stages.map(s => {
+      if (s.id === stageId) {
+        return { ...s, cadence: [...s.cadence, { type: 'email', intervalHours: 24 }] };
+      }
+      return s;
+    }));
+  };
+
+  const handleRemoveTouch = (stageId: string, touchIndex: number) => {
+    setStages(stages.map(s => {
+      if (s.id === stageId) {
+        const newCadence = [...s.cadence];
+        newCadence.splice(touchIndex, 1);
+        return { ...s, cadence: newCadence };
+      }
+      return s;
+    }));
+  };
+
+  const handleUpdateTouch = (stageId: string, touchIndex: number, field: keyof CadenceAction, value: any) => {
+    setStages(stages.map(s => {
+      if (s.id === stageId) {
+        const newCadence = [...s.cadence];
+        newCadence[touchIndex] = { ...newCadence[touchIndex], [field]: field === 'intervalHours' ? Number(value) : value };
+        return { ...s, cadence: newCadence };
+      }
+      return s;
+    }));
+  };
+
+  const handleUpdateStage = (stageId: string, field: keyof Stage, value: any) => {
+    setStages(stages.map(s => {
+      if (s.id === stageId) {
+        return { ...s, [field]: value };
+      }
+      return s;
+    }));
   };
 
   return (
@@ -81,63 +121,9 @@ export default function CRMView() {
                     </span>
                   </div>
                   
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:bg-secondary" onClick={() => setEditingStage(stage)}>
-                        <Settings2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </DialogTrigger>
-                    {/* Cadence Configuration Dialog Modal */}
-                    <DialogContent className="sm:max-w-[425px]">
-                      <DialogHeader>
-                        <DialogTitle>Configurar Etapa: {stage.name}</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Nome da Etapa</label>
-                          <Input defaultValue={stage.name} className="h-9" />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Tipo de Cenário (Cadência)</label>
-                          <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm" defaultValue={stage.scenarioType || ''}>
-                            <option value="">Sem cenário específico</option>
-                            <option value="Cold call funnel">Cold call funnel</option>
-                            <option value="Meeting follow-up funnel">Meeting follow-up funnel</option>
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <label className="text-sm font-medium">Cadência de Follow-up (Touches)</label>
-                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1"><Plus className="w-3 h-3"/> Add Touch</Button>
-                          </div>
-                          <div className="space-y-2 border rounded-md p-2 bg-secondary/20">
-                            {stage.cadence.length === 0 ? (
-                              <p className="text-xs text-muted-foreground text-center py-2">Nenhuma automação configurada.</p>
-                            ) : (
-                              stage.cadence.map((action, i) => (
-                                <div key={i} className="flex items-center gap-2 bg-background p-2 rounded border text-sm">
-                                  <span className="font-medium text-xs w-16">Touch {i+1}</span>
-                                  <select className="h-7 text-xs rounded border bg-background px-2" defaultValue={action.type}>
-                                    <option value="call">Ligar</option>
-                                    <option value="email">Email</option>
-                                    <option value="message">Mensagem</option>
-                                  </select>
-                                  <span className="text-xs text-muted-foreground">após</span>
-                                  <Input type="number" defaultValue={action.intervalHours} className="w-16 h-7 text-xs px-2" />
-                                  <span className="text-xs text-muted-foreground">horas</span>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto text-destructive hover:bg-destructive/10"><Trash2 className="w-3 h-3"/></Button>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                          <p className="text-[10px] text-muted-foreground">Tarefas serão geradas automaticamente na aba "Tarefas" quando o lead entrar nesta etapa.</p>
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button type="submit">Salvar Cadência</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:bg-secondary" onClick={() => setIsManagePipelineOpen(true)}>
+                    <Settings2 className="w-3.5 h-3.5" />
+                  </Button>
                 </div>
                 
                 <div className="flex-1 p-2 overflow-y-auto space-y-2">
@@ -226,11 +212,11 @@ export default function CRMView() {
               <div className="flex gap-2">
                 <Button variant="secondary" className="flex-1 text-xs" onClick={() => setIsCreateTaskOpen(true)}>Criar Tarefa</Button>
                 <Button variant="secondary" className="flex-1 text-xs">Agendar Follow-up</Button>
-                <select className="flex-1 h-9 rounded-md border border-input bg-secondary/50 px-3 py-1 text-xs shadow-sm transition-colors">
-                  <option value="">Atribuir a...</option>
-                  <option value="Quinzinho">Quinzinho</option>
-                  <option value="João">João</option>
-                  <option value="Maria">Maria</option>
+                <select className="flex-1 h-9 rounded-md border border-input bg-secondary/50 px-3 py-1 text-xs shadow-sm transition-colors text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+                  <option value="" className="bg-background text-foreground">Atribuir a...</option>
+                  <option value="Quinzinho" className="bg-background text-foreground">Quinzinho</option>
+                  <option value="João" className="bg-background text-foreground">João</option>
+                  <option value="Maria" className="bg-background text-foreground">Maria</option>
                 </select>
               </div>
 
@@ -289,7 +275,7 @@ export default function CRMView() {
               <div className="space-y-3 border-t pt-4">
                 <h3 className="font-semibold flex items-center gap-2 text-sm"><Activity className="w-4 h-4"/> Anotações</h3>
                 <textarea 
-                  className="w-full min-h-[100px] p-3 text-sm rounded-md border bg-background resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full min-h-[100px] p-3 text-sm rounded-md border bg-background text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                   placeholder="Adicione notas sobre o lead..."
                   defaultValue={selectedLead.notes}
                 />
@@ -300,142 +286,203 @@ export default function CRMView() {
         </SheetContent>
       </Sheet>
 
-      {/* Add Lead Modal */}
-      <Dialog open={isAddLeadOpen} onOpenChange={setIsAddLeadOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Adicionar Novo Lead</DialogTitle>
-            <DialogDescription>Preencha as informações do novo lead manualmente.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Nome</label>
-                <Input placeholder="Ex: João Silva" className="h-9" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Empresa</label>
-                <Input placeholder="Ex: Acme Corp" className="h-9" />
-              </div>
+      {/* Add Lead Sheet */}
+      <Sheet open={isAddLeadOpen} onOpenChange={setIsAddLeadOpen}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto bg-card border-l">
+          <SheetHeader className="mb-6 mt-6 text-left">
+            <SheetTitle className="text-2xl font-bold flex items-center gap-2">
+              <User className="w-6 h-6 text-primary" />
+              Adicionar Novo Lead
+            </SheetTitle>
+            <SheetDescription>
+              Preencha as informações do novo lead para iniciar no funil.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Nome</label>
+              <Input placeholder="Ex: João Silva" className="h-10 bg-background text-foreground" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Email</label>
-                <Input type="email" placeholder="joao@acme.com" className="h-9" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Telefone</label>
-                <Input placeholder="+55 11 99999-9999" className="h-9" />
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Empresa</label>
+              <Input placeholder="Ex: Acme Corp" className="h-10 bg-background text-foreground" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Etapa do Pipeline</label>
-                <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors">
-                  {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Responsável</label>
-                <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors">
-                  <option>Quinzinho</option>
-                  <option>João</option>
-                  <option>Maria</option>
-                </select>
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Email</label>
+              <Input type="email" placeholder="joao@acme.com" className="h-10 bg-background text-foreground" />
             </div>
-            <Button className="w-full mt-4" onClick={() => setIsAddLeadOpen(false)}>Criar Lead</Button>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Telefone</label>
+              <Input placeholder="+55 11 99999-9999" className="h-10 bg-background text-foreground" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Etapa do Pipeline</label>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-primary">
+                {stages.map(s => <option key={s.id} value={s.id} className="bg-background text-foreground">{s.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Responsável</label>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-primary">
+                <option className="bg-background text-foreground">Quinzinho</option>
+                <option className="bg-background text-foreground">João</option>
+                <option className="bg-background text-foreground">Maria</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Anotações Iniciais</label>
+              <textarea 
+                className="w-full min-h-[100px] p-3 text-sm rounded-md border bg-background text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                placeholder="Detalhes sobre a prospecção..."
+              />
+            </div>
+            <div className="pt-4 border-t">
+              <Button className="w-full h-10 text-base" onClick={() => setIsAddLeadOpen(false)}>
+                Criar Lead
+              </Button>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
-
-      
-      {/* Manage Pipeline Modal */}
+      {/* Manage Pipeline Full Page Dialog */}
       <Dialog open={isManagePipelineOpen} onOpenChange={setIsManagePipelineOpen}>
-        <DialogContent className="sm:max-w-[600px] h-[80vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Gerenciar Pipeline</DialogTitle>
-            <DialogDescription>Crie, reordene ou edite as etapas e suas cadências.</DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto pr-2 space-y-4 py-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-medium">Etapas do Funil</h3>
-              <Button size="sm" className="gap-1 h-8"><Plus className="w-3.5 h-3.5"/> Nova Etapa</Button>
+        <DialogContent className="max-w-[100vw] w-screen h-screen m-0 p-0 flex flex-col rounded-none border-0 bg-background sm:max-w-[100vw]">
+          <div className="px-6 py-4 border-b shrink-0 bg-card flex justify-between items-center sticky top-0 z-10">
+            <div>
+              <DialogTitle className="text-2xl font-bold">Gerenciar Pipeline</DialogTitle>
+              <DialogDescription className="text-muted-foreground mt-1 text-sm sm:text-base">
+                Configure as etapas do seu funil de vendas e as cadências automáticas (touches).
+              </DialogDescription>
             </div>
-            
-            <div className="space-y-3">
-              {stages.map((stage, index) => (
-                <div key={stage.id} className="border rounded-lg p-4 bg-card shadow-sm space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex flex-col text-muted-foreground cursor-move">
-                        <MoreHorizontal className="w-4 h-4 -mb-1.5" />
-                        <MoreHorizontal className="w-4 h-4" />
+            <Button variant="ghost" size="icon" onClick={() => setIsManagePipelineOpen(false)}>
+              <X className="w-6 h-6" />
+            </Button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-secondary/5">
+            <div className="max-w-5xl mx-auto space-y-6 pb-20">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-semibold text-xl text-foreground">Etapas do Funil</h3>
+                <Button className="gap-2 bg-primary text-primary-foreground">
+                  <Plus className="w-4 h-4"/> Nova Etapa
+                </Button>
+              </div>
+              
+              <div className="space-y-6">
+                {stages.map((stage, index) => (
+                  <div key={stage.id} className="border rounded-xl p-5 sm:p-6 bg-card shadow-sm space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/50">
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="flex flex-col text-muted-foreground/50 cursor-move shrink-0">
+                          <MoreHorizontal className="w-5 h-5 -mb-2" />
+                          <MoreHorizontal className="w-5 h-5" />
+                        </div>
+                        <span className="font-bold text-muted-foreground text-lg w-6 shrink-0">{index + 1}.</span>
+                        <Input 
+                          value={stage.name} 
+                          onChange={(e) => handleUpdateStage(stage.id, 'name', e.target.value)}
+                          className="h-11 text-base font-semibold w-full sm:max-w-[350px] bg-background text-foreground" 
+                        />
                       </div>
-                      <span className="font-bold text-muted-foreground w-4">{index + 1}.</span>
-                      <Input defaultValue={stage.name} className="h-8 w-[200px] font-medium" />
-                    </div>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10"><Trash2 className="w-4 h-4"/></Button>
-                  </div>
-                  
-                  <div className="pl-12 space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-xs text-muted-foreground">Tipo de Cenário</label>
-                        <select className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs" defaultValue={stage.scenarioType || ''}>
-                          <option value="">Nenhum cenário</option>
-                          <option value="Cold call funnel">Cold call funnel</option>
-                          <option value="Meeting follow-up funnel">Meeting follow-up funnel</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs text-muted-foreground">Tentativas (Touches)</label>
-                        <select className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs" defaultValue={stage.cadence.length}>
-                          <option value="0">Sem cadência</option>
-                          <option value="3">3 touches</option>
-                          <option value="5">5 touches</option>
-                          <option value="7">7 touches</option>
-                          <option value="10">10 touches</option>
-                          <option value="12">12 touches</option>
-                          <option value="15">15 touches</option>
-                          <option value="custom">Personalizado</option>
-                        </select>
-                      </div>
+                      <Button variant="ghost" className="text-destructive hover:bg-destructive/10 gap-2 shrink-0 self-end sm:self-auto">
+                        <Trash2 className="w-4 h-4"/> Remover Etapa
+                      </Button>
                     </div>
                     
-                    {stage.cadence.length > 0 && (
-                      <div className="bg-secondary/30 p-3 rounded-md space-y-2 border">
-                        <h4 className="text-xs font-medium mb-2">Intervalo entre tentativas</h4>
-                        {stage.cadence.map((action, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <span className="text-xs w-14 font-medium text-muted-foreground">Touch {i+1}</span>
-                            <select className="flex h-7 w-28 rounded border border-input bg-background px-2 text-xs" defaultValue={action.type}>
-                              <option value="call">Ligação</option>
-                              <option value="email">Email</option>
-                              <option value="message">Mensagem</option>
-                            </select>
-                            <span className="text-xs text-muted-foreground">após</span>
-                            <select className="flex h-7 w-24 rounded border border-input bg-background px-2 text-xs" defaultValue={action.intervalHours}>
-                              <option value="12">12 horas</option>
-                              <option value="24">24 horas</option>
-                              <option value="36">36 horas</option>
-                              <option value="48">48 horas</option>
-                              <option value={action.intervalHours}>Personalizado ({action.intervalHours}h)</option>
-                            </select>
-                          </div>
-                        ))}
+                    <div className="sm:pl-14 space-y-6">
+                      <div className="w-full sm:w-[400px] space-y-2">
+                        <label className="text-sm font-medium text-foreground">Tipo de Cenário</label>
+                        <select 
+                          className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" 
+                          value={stage.scenarioType || ''}
+                          onChange={(e) => handleUpdateStage(stage.id, 'scenarioType', e.target.value)}
+                        >
+                          <option value="" className="bg-background text-foreground">Nenhum cenário</option>
+                          <option value="Cold call funnel" className="bg-background text-foreground">Cold call funnel</option>
+                          <option value="Meeting follow-up funnel" className="bg-background text-foreground">Meeting follow-up funnel</option>
+                        </select>
                       </div>
-                    )}
+                      
+                      <div className="space-y-3 pt-2">
+                        <div className="flex flex-wrap justify-between items-center w-full gap-3">
+                          <h4 className="text-sm font-medium text-foreground">Cadência (Touches)</h4>
+                          <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={() => handleAddTouch(stage.id)}>
+                             <Plus className="w-3.5 h-3.5" /> Adicionar Touch
+                          </Button>
+                        </div>
+                        
+                        <div className="w-full">
+                          {stage.cadence.length === 0 ? (
+                            <div className="bg-secondary/20 border border-dashed border-border/50 rounded-lg p-6 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
+                              <p>Nenhum touch configurado para esta etapa.</p>
+                              <Button variant="outline" size="sm" className="mt-2" onClick={() => handleAddTouch(stage.id)}>
+                                Adicionar Primeiro Touch
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {stage.cadence.map((action, i) => (
+                                <div key={i} className="flex flex-wrap sm:flex-nowrap items-center gap-4 bg-card p-4 rounded-xl border border-border/50 shadow-sm">
+                                  <div className="flex flex-col items-center justify-center bg-secondary/30 w-12 h-12 rounded-lg border border-border/50 shrink-0">
+                                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Touch</span>
+                                    <span className="text-lg font-bold leading-none">{i+1}</span>
+                                  </div>
+                                  
+                                  <div className="flex-1 min-w-[200px] grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                      <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Ação</label>
+                                      <select 
+                                        className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary" 
+                                        value={action.type}
+                                        onChange={(e) => handleUpdateTouch(stage.id, i, 'type', e.target.value)}
+                                      >
+                                        <option value="call" className="bg-background text-foreground">Ligação (Call)</option>
+                                        <option value="email" className="bg-background text-foreground">Email</option>
+                                        <option value="message" className="bg-background text-foreground">Mensagem (WhatsApp/LinkedIn)</option>
+                                      </select>
+                                    </div>
+                                    
+                                    <div className="space-y-1.5">
+                                      <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Intervalo (Espera)</label>
+                                      <div className="flex items-center gap-2">
+                                        <Input 
+                                          type="number" 
+                                          value={action.intervalHours} 
+                                          onChange={(e) => handleUpdateTouch(stage.id, i, 'intervalHours', e.target.value)}
+                                          className="h-10 w-full bg-background text-foreground shadow-sm" 
+                                          min="0"
+                                        />
+                                        <span className="text-sm text-muted-foreground shrink-0 w-10">horas</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-10 w-10 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 mt-5 sm:mt-0"
+                                    onClick={() => handleRemoveTouch(stage.id, i)}
+                                    title="Remover Touch"
+                                  >
+                                    <Trash2 className="w-5 h-5"/>
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
-          <DialogFooter className="mt-4 pt-4 border-t shrink-0">
-            <Button variant="outline" onClick={() => setIsManagePipelineOpen(false)}>Cancelar</Button>
-            <Button onClick={() => setIsManagePipelineOpen(false)}>Salvar Pipeline</Button>
-          </DialogFooter>
+          <div className="p-4 sm:p-6 border-t bg-card flex justify-end gap-3 shrink-0">
+            <Button variant="outline" size="lg" onClick={() => setIsManagePipelineOpen(false)}>Cancelar</Button>
+            <Button size="lg" onClick={() => setIsManagePipelineOpen(false)} className="bg-primary text-primary-foreground px-8">Salvar Alterações</Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -449,19 +496,19 @@ export default function CRMView() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Título da Tarefa</label>
-              <Input placeholder="O que precisa ser feito?" />
+              <Input placeholder="O que precisa ser feito?" className="bg-background text-foreground" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Prioridade</label>
-              <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-                <option value="do-now">Fazer Agora (Urgente/Importante)</option>
-                <option value="schedule">Agendar (Importante/Não Urgente)</option>
-                <option value="delegate">Delegar (Urgente/Não Importante)</option>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
+                <option value="do-now" className="bg-background text-foreground">Fazer Agora (Urgente/Importante)</option>
+                <option value="schedule" className="bg-background text-foreground">Agendar (Importante/Não Urgente)</option>
+                <option value="delegate" className="bg-background text-foreground">Delegar (Urgente/Não Importante)</option>
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Data de Vencimento</label>
-              <Input type="date" />
+              <Input type="date" className="bg-background text-foreground" />
             </div>
             <Button className="w-full mt-2" onClick={() => setIsCreateTaskOpen(false)}>Criar Tarefa</Button>
           </div>
