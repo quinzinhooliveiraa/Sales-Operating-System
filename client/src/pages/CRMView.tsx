@@ -71,7 +71,6 @@ export default function CRMView() {
 
   const handleStageDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
   };
 
   const handleStageDrop = (e: React.DragEvent, targetStageId: string) => {
@@ -88,6 +87,10 @@ export default function CRMView() {
     newStages.splice(targetIndex, 0, draggedStage);
     
     setStages(newStages);
+    setDraggedStageId(null);
+  };
+
+  const handleStageDragEnd = () => {
     setDraggedStageId(null);
   };
 
@@ -198,9 +201,32 @@ export default function CRMView() {
             return (
               <div 
                 key={stage.id} 
-                className="w-72 flex flex-col bg-secondary/10 rounded-xl border border-border/50 shadow-sm"
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, stage.id)}
+                className={`w-72 flex flex-col bg-secondary/10 rounded-xl border border-border/50 shadow-sm ${draggedStageId === stage.id ? 'opacity-50' : ''}`}
+                draggable
+                onDragStart={(e) => {
+                  // Only drag stage if we are dragging the header
+                  if ((e.target as HTMLElement).closest('.lead-card')) {
+                    e.preventDefault();
+                    return;
+                  }
+                  handleStageDragStart(e, stage.id);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (draggedStageId) {
+                    handleStageDragOver(e);
+                  } else {
+                    handleDragOver(e);
+                  }
+                }}
+                onDrop={(e) => {
+                  if (draggedStageId) {
+                    handleStageDrop(e, stage.id);
+                  } else {
+                    handleDrop(e, stage.id);
+                  }
+                }}
+                onDragEnd={handleStageDragEnd}
               >
                 <div className="p-3 flex items-center justify-between border-b border-border/50 shrink-0 bg-background/50 rounded-t-xl">
                   <div className="flex items-center gap-2">
@@ -220,9 +246,9 @@ export default function CRMView() {
                     <div 
                       key={lead.id} 
                       draggable
-                      onDragStart={(e) => handleDragStart(e, lead.id)}
+                      onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, lead.id); }}
                       onClick={() => setSelectedLead(lead)}
-                      className={`bg-card border p-3 rounded-lg shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-grab active:cursor-grabbing group relative ${draggedLeadId === lead.id ? 'opacity-50' : ''}`}
+                      className={`lead-card bg-card border p-3 rounded-lg shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-grab active:cursor-grabbing group relative ${draggedLeadId === lead.id ? 'opacity-50' : ''}`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="font-medium text-sm text-foreground">{lead.name}</h4>
@@ -505,7 +531,15 @@ export default function CRMView() {
               
               <div className="space-y-6">
                 {stages.map((stage, index) => (
-                  <div key={stage.id} className="border rounded-xl p-5 sm:p-6 bg-card shadow-sm space-y-5">
+                  <div 
+                    key={stage.id} 
+                    className={`border rounded-xl p-5 sm:p-6 bg-card shadow-sm space-y-5 ${draggedStageId === stage.id ? 'opacity-50 border-primary' : ''}`}
+                    draggable
+                    onDragStart={(e) => handleStageDragStart(e, stage.id)}
+                    onDragOver={(e) => { e.preventDefault(); handleStageDragOver(e); }}
+                    onDrop={(e) => handleStageDrop(e, stage.id)}
+                    onDragEnd={handleStageDragEnd}
+                  >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/50">
                       <div className="flex items-center gap-4 flex-1">
                         <div className="flex flex-col text-muted-foreground/50 cursor-move shrink-0">
@@ -516,6 +550,7 @@ export default function CRMView() {
                         <Input 
                           value={stage.name} 
                           onChange={(e) => handleUpdateStage(stage.id, 'name', e.target.value)}
+                          onDragStart={(e) => e.stopPropagation()}
                           className="h-11 text-base font-semibold w-full sm:max-w-[350px] bg-background text-foreground" 
                         />
                       </div>
@@ -529,6 +564,7 @@ export default function CRMView() {
                           className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" 
                           value={stage.scenarioType || ''}
                           onChange={(e) => handleUpdateStage(stage.id, 'scenarioType', e.target.value)}
+                          onDragStart={(e) => e.stopPropagation()}
                         >
                           <option value="" className="bg-background text-foreground">Nenhum cenário</option>
                           <option value="Cold call funnel" className="bg-background text-foreground">Cold call funnel</option>
