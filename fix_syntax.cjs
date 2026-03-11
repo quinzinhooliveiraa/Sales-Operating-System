@@ -1,35 +1,14 @@
 const fs = require('fs');
-let code = fs.readFileSync('client/src/pages/CRMView.tsx', 'utf8');
+let crm = fs.readFileSync('client/src/pages/CRMView.tsx', 'utf8');
 
-const searchCode = `                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          </div>
-          <div className="p-4 sm:p-6 border-t bg-card flex justify-end gap-3 shrink-0">`;
-const replaceCode = `                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="p-4 sm:p-6 border-t bg-card flex justify-end gap-3 shrink-0">`;
-
-code = code.replace(searchCode, replaceCode);
-fs.writeFileSync('client/src/pages/CRMView.tsx', code);
+if (crm.includes('const [movePrompt, setMovePrompt] = useState<{isOpen: boolean, leadId: number | null, targetStageId: string | null}>({isOpen: false, leadId: null, targetStageId: null});')) {
+  // It's possible there are still duplicates
+  let count = (crm.match(/const \[movePrompt, setMovePrompt\] = useState/g) || []).length;
+  if (count > 1) {
+    console.log("Found duplicate movePrompt");
+    crm = crm.replace('  const [movePrompt, setMovePrompt] = useState<{isOpen: boolean, leadId: number | null, targetStageId: string | null}>({isOpen: false, leadId: null, targetStageId: null});\n', '');
+    fs.writeFileSync('client/src/pages/CRMView.tsx', crm);
+  } else {
+    console.log("Only one movePrompt found");
+  }
+}

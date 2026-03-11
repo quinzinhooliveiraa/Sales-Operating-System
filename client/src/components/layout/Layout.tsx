@@ -21,19 +21,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import logoImage from "@assets/ChatGPT_Image_27_de_nov._de_2025,_16_43_05_1773182905923.png";
 
-const getTranslations = (lang: string) => {
-  switch(lang) {
-    case 'en-US': return { dashboard: "Dashboard", scheduling: "Scheduling", crm: "CRM Pipeline", tasks: "Tasks", calendar: "Calendar", settings: "Settings" };
-    case 'es-ES': return { dashboard: "Panel", scheduling: "Citas", crm: "Pipeline CRM", tasks: "Tareas", calendar: "Calendario", settings: "Ajustes" };
-    default: return { dashboard: "Dashboard", scheduling: "Agendamentos", crm: "Pipeline CRM", tasks: "Tarefas", calendar: "Calendário", settings: "Configurações" };
-  }
-};
+
 
 export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: boolean) => void }) {
   const [location] = useLocation();
-  const { settings } = useAppContext();
-  const lang = settings?.language || 'pt-BR';
-  const t = getTranslations(lang);
+  const { t } = useAppContext();
   
   const navItems = [
     { href: "/", label: t.dashboard, icon: LayoutDashboard },

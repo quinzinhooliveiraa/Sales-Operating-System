@@ -9,7 +9,7 @@ import { useAppContext } from "@/context/AppContext";
 import type { Lead, Stage, CadenceAction } from "@/context/AppContext";
 
 export default function CRMView() {
-  const { stages, setStages, leads, setLeads, updateLeadStage, addLead, formatCurrency } = useAppContext();
+  const { stages, setStages, leads, setLeads, updateLeadStage, addLead, formatCurrency, t } = useAppContext();
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
   
   // New lead form state
@@ -27,6 +27,7 @@ export default function CRMView() {
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isManagePipelineOpen, setIsManagePipelineOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [movePrompt, setMovePrompt] = useState<{isOpen: boolean, leadId: number | null, targetStageId: string | null}>({isOpen: false, leadId: null, targetStageId: null});
   
   const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
   const [collapsedStages, setCollapsedStages] = useState<Record<string, boolean>>({});
@@ -71,7 +72,7 @@ export default function CRMView() {
   const handleDrop = (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
     if (draggedLeadId !== null) {
-      updateLeadStage(draggedLeadId, stageId);
+      setMovePrompt({ isOpen: true, leadId: draggedLeadId, targetStageId: stageId });
       setDraggedLeadId(null);
     }
   };
@@ -195,7 +196,7 @@ export default function CRMView() {
       history: [{ id: Math.random().toString(), type: 'stage_change', description: 'Lead adicionado', date: new Date().toISOString() }]
     };
     
-    setLeads([...leads, lead]);
+    addLead(lead);
     setIsAddLeadOpen(false);
     setNewLead({ 
               name: "", company: "", email: "", phone: "", stage: stages[0]?.id || "", owner: "Quinzinho", notes: "",
@@ -731,7 +732,7 @@ export default function CRMView() {
         <DialogContent className="max-w-[100vw] w-screen h-screen m-0 p-0 flex flex-col rounded-none border-0 bg-background sm:max-w-[100vw]">
           <div className="px-6 py-4 border-b shrink-0 bg-card flex justify-between items-center sticky top-0 z-10">
             <div>
-              <DialogTitle className="text-2xl font-bold">Gerenciar Pipeline</DialogTitle>
+              <DialogTitle className="text-2xl font-bold">{t?.managePipeline || "Gerenciar Pipeline"}</DialogTitle>
               <DialogDescription className="text-muted-foreground mt-1 text-sm sm:text-base">
                 Configure as etapas do seu funil de vendas e as cadências automáticas (touches).
               </DialogDescription>
@@ -871,12 +872,22 @@ export default function CRMView() {
                                       <div className="flex items-center gap-2">
                                         <Input 
                                           type="number" 
-                                          value={action.intervalHours} 
-                                          onChange={(e) => handleUpdateTouch(stage.id, i, 'intervalHours', e.target.value)}
+                                          value={action.intervalValue} 
+                                          onChange={(e) => handleUpdateTouch(stage.id, i, 'intervalValue', e.target.value)}
                                           className="h-10 w-full bg-background text-foreground shadow-sm" 
                                           min="0"
                                         />
-                                        <span className="text-sm text-muted-foreground shrink-0 w-10">horas</span>
+                                        <select
+                                          className="h-10 rounded-md border border-input bg-background text-foreground px-2 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary w-24 shrink-0"
+                                          value={action.intervalUnit}
+                                          onChange={(e) => handleUpdateTouch(stage.id, i, 'intervalUnit', e.target.value)}
+                                        >
+                                          <option value="minutes">min</option>
+                                          <option value="hours">horas</option>
+                                          <option value="days">dias</option>
+                                          <option value="months">meses</option>
+                                          <option value="years">anos</option>
+                                        </select>
                                       </div>
                                     </div>
                                   </div>

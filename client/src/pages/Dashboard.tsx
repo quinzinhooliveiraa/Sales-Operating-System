@@ -6,17 +6,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 import { useAppContext } from "@/context/AppContext";
 
-const getTranslations = (lang: string) => {
-  switch(lang) {
-    case 'en-US': return { greeting: "Good morning", pipeline: "Pipeline Overview", overdue: "overdue follow-ups", meetings: "Upcoming Meetings", newLeads: "New Leads", tasks: "Pending Tasks" };
-    case 'es-ES': return { greeting: "Buenos días", pipeline: "Resumen del Pipeline", overdue: "seguimientos atrasados", meetings: "Próximas Reuniones", newLeads: "Nuevos Leads", tasks: "Tareas Pendientes" };
-    default: return { greeting: "Bom dia", pipeline: "Visão Geral do Pipeline", overdue: "follow-ups atrasados", meetings: "Próximas Reuniões", newLeads: "Novos Leads", tasks: "Tarefas Pendentes" };
-  }
-};
+
 
 export default function Dashboard() {
-  const { leads, tasks, events, settings } = useAppContext();
-  const t = getTranslations(settings?.language || 'pt-BR');
+  const { leads, tasks, events, settings, t } = useAppContext();
   
   // Calculate overdue touches based on tasks
   const pendingCadenceTasks = tasks.filter(t => t.type === 'Cadência Automática' && t.status === 'pending');

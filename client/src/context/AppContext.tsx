@@ -81,11 +81,12 @@ interface AppContextType {
   setTasks: (tasks: Task[]) => void;
   events: CalendarEvent[];
   setEvents: (events: CalendarEvent[]) => void;
-  updateLeadStage: (leadId: number, stageId: string) => void;
+  updateLeadStage: (leadId: number, stageId: string, restartCadence?: boolean) => void;
   addLead: (lead: Omit<Lead, 'id'>) => Lead;
   addTask: (task: Omit<Task, 'id'>) => Task;
   addEvent: (event: Omit<CalendarEvent, 'id'>) => CalendarEvent;
   formatCurrency: (value: number | string) => string;
+  t: Record<string, string>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -124,6 +125,48 @@ const INITIAL_EVENTS: CalendarEvent[] = [
   { id: 'e1', title: "Call de Descoberta: Acme", date: getToday(), hour: 10, duration: 1, type: "meeting", linkedLeadId: 1, style: "border-blue-500 bg-blue-500/10 text-foreground" },
   { id: 'e2', title: "Demo: Global Ind.", date: getTomorrow(), hour: 14, duration: 1.5, type: "meeting", linkedLeadId: 3, style: "border-primary bg-primary/10 text-foreground" },
 ];
+
+
+export const getGlobalTranslations = (lang: string) => {
+  switch(lang) {
+    case 'en-US': return {
+      dashboard: "Dashboard", scheduling: "Scheduling", crm: "CRM Pipeline", tasks: "Tasks", calendar: "Calendar", settings: "Settings",
+      newLead: "New Lead", managePipeline: "Manage Pipeline", searchLeads: "Search leads...",
+      budget: "Budget", authority: "Authority", need: "Need", timeline: "Timeline", notes: "Notes",
+      stage: "Stage", value: "Value", company: "Company", contact: "Contact", addLeadBtn: "Create Lead",
+      save: "Save", cancel: "Cancel", delete: "Delete", edit: "Edit",
+      moveLeadPromptTitle: "Restart Cadence?",
+      moveLeadPromptDesc: "You moved this lead. Do you want to restart the cadence timers for the new stage or keep the existing scheduled tasks?",
+      restartCadence: "Restart Cadence", keepCadence: "Keep Existing Tasks",
+      overdue: "Overdue", today: "Today", tomorrow: "Tomorrow",
+      doNow: "Do Now", schedule: "Schedule", delegate: "Delegate", eliminate: "Eliminate"
+    };
+    case 'es-ES': return {
+      dashboard: "Panel", scheduling: "Citas", crm: "Pipeline CRM", tasks: "Tareas", calendar: "Calendario", settings: "Ajustes",
+      newLead: "Nuevo Lead", managePipeline: "Gestionar Pipeline", searchLeads: "Buscar leads...",
+      budget: "Presupuesto", authority: "Autoridad", need: "Necesidad", timeline: "Urgencia", notes: "Notas",
+      stage: "Etapa", value: "Valor", company: "Empresa", contact: "Contacto", addLeadBtn: "Crear Lead",
+      save: "Guardar", cancel: "Cancelar", delete: "Eliminar", edit: "Editar",
+      moveLeadPromptTitle: "¿Reiniciar Cadencia?",
+      moveLeadPromptDesc: "Has movido este lead. ¿Deseas reiniciar los temporizadores de cadencia para la nueva etapa o mantener las tareas programadas existentes?",
+      restartCadence: "Reiniciar Cadencia", keepCadence: "Mantener Tareas",
+      overdue: "Atrasado", today: "Hoy", tomorrow: "Mañana",
+      doNow: "Hacer Ahora", schedule: "Programar", delegate: "Delegar", eliminate: "Eliminar"
+    };
+    default: return {
+      dashboard: "Dashboard", scheduling: "Agendamentos", crm: "Pipeline CRM", tasks: "Tarefas", calendar: "Calendário", settings: "Configurações",
+      newLead: "Novo Lead", managePipeline: "Gerenciar Pipeline", searchLeads: "Buscar leads...",
+      budget: "Caixa (Budget)", authority: "Decisor (Authority)", need: "Necessidade (Need)", timeline: "Urgência (Timeline)", notes: "Anotações",
+      stage: "Etapa", value: "Valor", company: "Empresa", contact: "Contato", addLeadBtn: "Criar Lead",
+      save: "Salvar", cancel: "Cancelar", delete: "Excluir", edit: "Editar",
+      moveLeadPromptTitle: "Reiniciar Lembretes?",
+      moveLeadPromptDesc: "Você moveu este lead. Deseja gerar novas tarefas de cadência para esta etapa ou manter as antigas?",
+      restartCadence: "Gerar Novas Tarefas", keepCadence: "Manter Antigas",
+      overdue: "Atrasado", today: "Hoje", tomorrow: "Amanhã",
+      doNow: "Fazer Agora", schedule: "Agendar", delegate: "Delegar", eliminate: "Eliminar"
+    };
+  }
+};
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [settings, setSettings] = useState<UserSettings>({ language: 'pt-BR', currency: 'BRL' });
@@ -174,6 +217,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     
     // Auto-trigger cadence for initial stage
     const stage = stages.find(s => s.id === newLead.stage);
+    
     if (stage && stage.cadence && stage.cadence.length > 0) {
       stage.cadence.forEach((action, idx) => {
         const d = new Date();
@@ -213,7 +257,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return newLead;
   };
 
-  const updateLeadStage = (leadId: number, stageId: string) => {
+  const updateLeadStage = (leadId: number, stageId: string, restartCadence: boolean = true) => {
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, stage: stageId } : l));
     
     // Generate tasks based on cadence
@@ -255,8 +299,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const t = getGlobalTranslations(settings?.language || 'pt-BR');
   return (
-    <AppContext.Provider value={{ settings, setSettings: handleSetSettings, stages, setStages, leads, setLeads, tasks, setTasks, events, setEvents, updateLeadStage, addTask, addEvent, addLead, formatCurrency }}>
+  <AppContext.Provider value={{ settings, setSettings: handleSetSettings, stages, setStages, leads, setLeads, tasks, setTasks, events, setEvents, updateLeadStage, addTask, addEvent, addLead, formatCurrency, t }}>
       {children}
     </AppContext.Provider>
   );

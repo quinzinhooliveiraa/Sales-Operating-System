@@ -375,7 +375,7 @@ export default function TasksView() {
                         <div className="flex justify-between items-start">
                           <div>
                             <p className="font-medium text-sm">{lead.name}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{lead.contact}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{lead.phone || lead.email}</p>
                           </div>
                           <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded">
                             {lead.value}
