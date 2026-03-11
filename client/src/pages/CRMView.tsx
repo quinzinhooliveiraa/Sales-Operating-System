@@ -10,6 +10,7 @@ import type { Lead, Stage, CadenceAction } from "@/context/AppContext";
 
 export default function CRMView() {
   const { stages, setStages, leads, setLeads, updateLeadStage, addLead, formatCurrency, t } = useAppContext();
+  const { tasks, setTasks } = useAppContext(); // needed to show next steps and complete them
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
   
   // New lead form state
@@ -346,21 +347,45 @@ export default function CRMView() {
                         <span className="text-xs font-medium">{lead.value}</span>
                       </div>
 
-                      {/* Dynamic action indicator based on state */}
                       <div className="mt-3 pt-3 border-t border-border/50 flex flex-col gap-1.5">
-                        {lead.meetingDate ? (
-                          <div className="flex items-center gap-1.5 text-xs text-primary font-medium bg-primary/5 p-1.5 rounded">
-                            <Calendar className="w-3.5 h-3.5" /> Reunião: {lead.meetingDate}
-                          </div>
-                        ) : lead.nextTask ? (
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary/50 p-1.5 rounded">
-                            <Clock className="w-3.5 h-3.5" /> Próx: {lead.nextTask}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground/50 p-1.5">
-                            Nenhuma ação pendente
-                          </div>
-                        )}
+                        {(() => {
+                            const pendingTasksForLead = tasks.filter(t => t.linkedLeadId === lead.id && t.status === 'pending');
+                            if (pendingTasksForLead.length > 0) {
+                              const nextTask = pendingTasksForLead[0];
+                              const isOverdue = new Date(nextTask.dueDate) < new Date(new Date().toISOString().split('T')[0]);
+                              return (
+                                <div className="mt-2">
+                                  <div className="flex items-center gap-1.5 text-[10px] mb-1">
+                                    <span className="font-semibold text-muted-foreground uppercase tracking-wider">Próximo Passo:</span>
+                                  </div>
+                                  <div className="flex items-start justify-between gap-1">
+                                    <span className="text-xs font-medium leading-tight line-clamp-2">{nextTask.title}</span>
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded shrink-0 ${isOverdue ? 'bg-destructive/10 text-destructive font-bold' : 'bg-secondary text-muted-foreground'}`}>
+                                      {isOverdue ? (t?.overdue || 'Atrasado') : nextTask.dueDate}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            } else if (lead.meetingDate) {
+                                return (
+                                  <div className="flex items-center gap-1.5 text-xs text-primary font-medium bg-primary/5 p-1.5 rounded">
+                                    <Calendar className="w-3.5 h-3.5" /> Reunião: {lead.meetingDate}
+                                  </div>
+                                );
+                            } else if (lead.nextTask) {
+                                return (
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary/50 p-1.5 rounded">
+                                    <Clock className="w-3.5 h-3.5" /> Próx: {lead.nextTask}
+                                  </div>
+                                );
+                            } else {
+                                return (
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground/50 p-1.5">
+                                    Nenhuma ação pendente
+                                  </div>
+                                );
+                            }
+                        })()}
                       </div>
                     </div>
                   ))}
@@ -415,26 +440,41 @@ export default function CRMView() {
               </div>
 
               <div className="space-y-3 border-t pt-4">
-                <h3 className="font-semibold flex items-center gap-2 text-sm"><Target className="w-4 h-4"/> Próxima Ação</h3>
-                {selectedLead.meetingDate ? (
-                  <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex justify-between items-center">
-                    <div>
-                      <p className="text-sm font-medium text-foreground flex items-center gap-2"><Calendar className="w-4 h-4 text-primary"/> Reunião Agendada</p>
-                      <p className="text-xs text-muted-foreground mt-1">{selectedLead.meetingDate}</p>
-                    </div>
-                    <Button size="sm" variant="outline">Entrar na Call</Button>
-                  </div>
-                ) : selectedLead.nextTask ? (
-                  <div className="bg-secondary/50 border rounded-lg p-3 flex justify-between items-center">
-                    <div>
-                      <p className="text-sm font-medium flex items-center gap-2"><Clock className="w-4 h-4"/> {selectedLead.nextTask}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Gerado pela cadência</p>
-                    </div>
-                    <Button size="sm">Completar</Button>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Nenhuma ação planejada.</p>
-                )}
+                <h3 className="font-semibold flex items-center gap-2 text-sm"><Target className="w-4 h-4"/> Próxima Ação (Cadência)</h3>
+                {(() => {
+                    const pendingTasksForLead = tasks.filter(t => t.linkedLeadId === selectedLead.id && t.status === 'pending');
+                    if (pendingTasksForLead.length > 0) {
+                      const nextTask = pendingTasksForLead[0];
+                      const isOverdue = new Date(nextTask.dueDate) < new Date(new Date().toISOString().split('T')[0]);
+                      return (
+                        <div className="bg-secondary/50 border rounded-lg p-3 flex justify-between items-center">
+                          <div>
+                            <p className="text-sm font-medium flex items-center gap-2"><Clock className="w-4 h-4"/> {nextTask.title}</p>
+                            <p className={`text-xs mt-1 ${isOverdue ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+                                Vencimento: {isOverdue ? (t?.overdue || 'Atrasado') : nextTask.dueDate}
+                            </p>
+                          </div>
+                          <Button size="sm" onClick={() => {
+                              setTasks(tasks.map(task => task.id === nextTask.id ? { ...task, status: 'completed' } : task));
+                          }}>Completar</Button>
+                        </div>
+                      );
+                    } else if (selectedLead.meetingDate) {
+                        return (
+                          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex justify-between items-center">
+                            <div>
+                              <p className="text-sm font-medium text-foreground flex items-center gap-2"><Calendar className="w-4 h-4 text-primary"/> Reunião Agendada</p>
+                              <p className="text-xs text-muted-foreground mt-1">{selectedLead.meetingDate}</p>
+                            </div>
+                            <Button size="sm" variant="outline">Entrar na Call</Button>
+                          </div>
+                        );
+                    } else {
+                        return (
+                          <p className="text-sm text-muted-foreground">Nenhuma ação de cadência planejada.</p>
+                        );
+                    }
+                })()}
               </div>
 
               <div className="space-y-3 border-t pt-4">
