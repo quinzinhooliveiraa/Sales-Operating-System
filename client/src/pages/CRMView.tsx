@@ -510,7 +510,7 @@ export default function CRMView() {
               />
             </div>
             <div className="pt-4 border-t">
-              <Button className="w-full h-10 text-base" onClick={() => setIsAddLeadOpen(false)}>
+              <Button className="w-full h-10 text-base" onClick={(e) => { e.preventDefault(); handleAddLead(); }}>
                 Criar Lead
               </Button>
             </div>
