@@ -1,15 +1,19 @@
+import { useAppContext, type Task, type Priority } from "@/context/AppContext";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { CheckSquare, Calendar, Filter, Clock, MoreVertical, Plus, AlertCircle, CalendarDays, UserPlus, XCircle, LayoutGrid, List } from "lucide-react";
-import { useAppContext } from "@/context/AppContext";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import type { Task, Priority } from "@/context/AppContext";
 
 export default function TasksView() {
   const { tasks, setTasks, leads } = useAppContext();
+  
+  const handleCompleteTask = (id: string) => {
+    setTasks(tasks.map(t => t.id === id ? { ...t, status: t.status === 'completed' ? 'pending' : 'completed' } : t));
+  };
+
   const [filter, setFilter] = useState<Priority | 'all'>('all');
   const [viewMode, setViewMode] = useState<'list' | 'matrix'>('matrix');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);

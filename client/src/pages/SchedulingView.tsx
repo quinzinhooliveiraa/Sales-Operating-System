@@ -8,7 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+import { useAppContext } from "@/context/AppContext";
+
 export default function SchedulingView() {
+  const { addEvent } = useAppContext();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedCreationType, setSelectedCreationType] = useState<string | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);

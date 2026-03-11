@@ -4,7 +4,19 @@ import { Users, Calendar as CalendarIcon, CheckCircle2, ArrowUpRight, ArrowDownR
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
+import { useAppContext } from "@/context/AppContext";
+
 export default function Dashboard() {
+  const { leads, tasks, events } = useAppContext();
+  
+  // Calculate overdue touches based on tasks
+  const pendingCadenceTasks = tasks.filter(t => t.type === 'Cadência Automática' && t.status === 'pending');
+  const overdueTouches = pendingCadenceTasks.filter(t => new Date(t.dueDate) < new Date()).length;
+  
+  // Get upcoming meetings
+  const today = new Date().toISOString().split('T')[0];
+  const upcomingMeetings = events.filter(e => e.type === 'meeting' && e.date >= today).sort((a,b) => a.date.localeCompare(b.date));
+
   const [timeFilter, setTimeFilter] = useState<'day' | 'week' | 'month'>('week');
 
   const getMetrics = () => {
@@ -103,7 +115,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-semibold text-destructive">12</div>
-            <p className="text-xs text-destructive/80 font-medium mt-1">5 follow-ups atrasados</p>
+            <p className="text-xs text-destructive/80 font-medium mt-1">{overdueTouches} follow-ups atrasados</p>
           </CardContent>
         </Card>
       </div>

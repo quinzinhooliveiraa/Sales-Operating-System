@@ -74,8 +74,9 @@ interface AppContextType {
   events: CalendarEvent[];
   setEvents: (events: CalendarEvent[]) => void;
   updateLeadStage: (leadId: number, stageId: string) => void;
-  addTask: (task: Omit<Task, 'id'>) => void;
-  addEvent: (event: Omit<CalendarEvent, 'id'>) => void;
+  addLead: (lead: Omit<Lead, 'id'>) => Lead;
+  addTask: (task: Omit<Task, 'id'>) => Task;
+  addEvent: (event: Omit<CalendarEvent, 'id'>) => CalendarEvent;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -133,6 +134,48 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return newEvent;
   };
 
+  
+  const addLead = (lead: Omit<Lead, 'id'>) => {
+    const newLead = { ...lead, id: Math.floor(Math.random() * 100000) } as Lead;
+    setLeads(prev => [...prev, newLead]);
+    
+    // Auto-trigger cadence for initial stage
+    const stage = stages.find(s => s.id === newLead.stage);
+    if (stage && stage.cadence && stage.cadence.length > 0) {
+      stage.cadence.forEach((action, idx) => {
+        const d = new Date();
+        d.setDate(d.getDate() + action.intervalHours / 24);
+        const actionText = action.type === 'call' ? 'Ligar para' : action.type === 'email' ? 'Email para' : 'Mensagem para';
+        const newTask = addTask({
+          title: `${actionText} ${newLead.name} (Touch ${idx + 1})`,
+          description: `Gerado automaticamente ao criar lead na etapa ${stage.name}`,
+          priority: 'do-now',
+          dueDate: d.toISOString().split('T')[0],
+          responsibleUser: newLead.owner || 'Quinzinho',
+          status: 'pending',
+          type: 'Cadência Automática',
+          linkedLeadId: newLead.id,
+          linkedStageId: newLead.stage
+        });
+        
+        if (action.type === 'call') {
+            addEvent({
+              title: `[Tarefa] ${actionText} ${newLead.name}`,
+              date: d.toISOString().split('T')[0],
+              hour: 9 + (idx % 8), // Spread hours a bit
+              duration: 0.5,
+              type: 'task',
+              linkedLeadId: newLead.id,
+              linkedTaskId: newTask.id,
+              style: "border-muted-foreground bg-secondary text-muted-foreground"
+            });
+        }
+      });
+    }
+    
+    return newLead;
+  };
+
   const updateLeadStage = (leadId: number, stageId: string) => {
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, stage: stageId } : l));
     
@@ -172,7 +215,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AppContext.Provider value={{ stages, setStages, leads, setLeads, tasks, setTasks, events, setEvents, updateLeadStage, addTask, addEvent }}>
+    <AppContext.Provider value={{ stages, setStages, leads, setLeads, tasks, setTasks, events, setEvents, updateLeadStage, addTask, addEvent, addLead }}>
       {children}
     </AppContext.Provider>
   );

@@ -9,7 +9,7 @@ import { useAppContext } from "@/context/AppContext";
 import type { Lead, Stage, CadenceAction } from "@/context/AppContext";
 
 export default function CRMView() {
-  const { stages, setStages, leads, setLeads, updateLeadStage } = useAppContext();
+  const { stages, setStages, leads, setLeads, updateLeadStage, addLead } = useAppContext();
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
   
   // New lead form state

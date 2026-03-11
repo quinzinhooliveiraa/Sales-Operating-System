@@ -1,8 +1,8 @@
+import { useAppContext } from "@/context/AppContext";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, Search, Plus, Menu, Settings, HelpCircle, User, Grid, Globe } from "lucide-react";
-import { useAppContext } from "@/context/AppContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,13 +27,33 @@ import {
 } from "@/components/ui/dialog";
 
 
+
 export default function CalendarView() {
-  const { events } = useAppContext();
+  const { events, leads, addEvent, addTask } = useAppContext();
   const [view, setView] = useState<'month'|'week'|'day'>('week');
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [isEventSheetOpen, setIsEventSheetOpen] = useState(false);
   
   const [isCreateMeetingOpen, setIsCreateMeetingOpen] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [newEventDate, setNewEventDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newEventHour, setNewEventHour] = useState('10');
+  
+  const handleCreateMeeting = (e: any) => {
+    e.preventDefault();
+    if (newEventTitle) {
+      addEvent({
+        title: newEventTitle,
+        date: newEventDate,
+        hour: parseInt(newEventHour),
+        duration: 1,
+        type: 'meeting',
+        style: "border-primary bg-primary/10 text-foreground"
+      });
+      setIsCreateMeetingOpen(false);
+      setNewEventTitle('');
+    }
+  };
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isLinkLeadOpen, setIsLinkLeadOpen] = useState(false);
 
