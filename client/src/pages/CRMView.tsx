@@ -140,13 +140,15 @@ export default function CRMView() {
   const handleAddLead = () => {
     if (!newLead.name) return;
     
+    const finalStage = newLead.stage || stages[0]?.id || "";
+    
     const lead: Lead = {
-      id: Math.max(0, ...leads.map(l => l.id)) + 1,
+      id: leads.length > 0 ? Math.max(...leads.map(l => l.id)) + 1 : 1,
       name: newLead.name || "",
       company: newLead.company || "",
       email: newLead.email || "",
       phone: newLead.phone || "",
-      stage: newLead.stage || stages[0]?.id || "",
+      stage: finalStage,
       owner: newLead.owner || "Quinzinho",
       value: "R$ 0",
       tags: [],
@@ -186,7 +188,10 @@ export default function CRMView() {
             <Settings2 className="w-3.5 h-3.5" />
             Gerenciar Pipeline
           </Button>
-          <Button className="gap-1.5 h-8 text-xs bg-primary text-primary-foreground" onClick={() => setIsAddLeadOpen(true)}>
+          <Button className="gap-1.5 h-8 text-xs bg-primary text-primary-foreground" onClick={() => {
+            setNewLead({ name: "", company: "", email: "", phone: "", stage: stages[0]?.id || "", owner: "Quinzinho", notes: "" });
+            setIsAddLeadOpen(true);
+          }}>
             <Plus className="w-3.5 h-3.5" />
             Adicionar Lead
           </Button>
@@ -457,7 +462,7 @@ export default function CRMView() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Etapa do Pipeline</label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-primary" value={newLead.stage} onChange={e => setNewLead({...newLead, stage: e.target.value})}>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-primary" value={newLead.stage || stages[0]?.id || ""} onChange={e => setNewLead({...newLead, stage: e.target.value})}>
                 {stages.map(s => <option key={s.id} value={s.id} className="bg-background text-foreground">{s.name}</option>)}
               </select>
             </div>
