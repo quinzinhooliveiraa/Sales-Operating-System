@@ -38,14 +38,7 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: bool
         <span className="font-heading font-semibold text-lg tracking-tight">Olivar OS</span>
       </div>
 
-      <div className="px-4 pb-4">
-        <Button className="w-full justify-start gap-2 shadow-sm bg-primary text-primary-foreground hover:bg-primary/90" size="default">
-          <Plus className="w-4 h-4" />
-          <span>Nova Ação</span>
-        </Button>
-      </div>
-
-      <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto mt-4">
         {navItems.map((item) => {
           const isActive = location === item.href;
           const Icon = item.icon;
