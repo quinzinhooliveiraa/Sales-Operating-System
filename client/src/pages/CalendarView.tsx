@@ -283,7 +283,7 @@ export default function CalendarView() {
           ) : (
             <>
               {/* Days Header */}
-              <div className="flex shrink-0 ml-14 pt-4 pb-2 z-10 bg-background border-b border-border/50">
+              <div className="flex shrink-0 pt-4 pb-2 z-10 bg-background border-b border-border/50">
                 <div className="w-16 shrink-0 flex flex-col justify-end pb-2">
                   <div className="flex flex-col text-[10px] text-muted-foreground font-medium gap-1 items-end pr-2 cursor-pointer hover:text-foreground">
                     <div className="flex items-center gap-1">
