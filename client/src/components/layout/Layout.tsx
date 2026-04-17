@@ -19,6 +19,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { PushNotificationBanner } from "@/components/PushNotificationBanner";
 import logoImage from "@assets/ChatGPT_Image_27_de_nov._de_2025,_16_43_05_1773182905923.png";
 
 
@@ -141,6 +142,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 flex flex-col min-w-0">
         <Topbar setSidebarOpen={setSidebarOpen} />
+        <PushNotificationBanner />
         <div className={`flex-1 overflow-y-auto ${isFullWidth ? 'p-0' : 'p-4 md:p-8'}`}>
           <div className={`${isFullWidth ? 'w-full h-full' : 'max-w-5xl mx-auto w-full'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
             {children}

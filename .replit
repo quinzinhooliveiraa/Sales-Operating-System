@@ -41,4 +41,11 @@ waitForPort = 5000
 
 [agent]
 stack = "MOCKUP_JS"
-mockupState = "MOCKUP"
+mockupState = "FULLSTACK"
+
+[userenv]
+
+[userenv.shared]
+VAPID_PUBLIC_KEY = "BOlviBTVuQYG6BSdn5zqYmlj-bLx7oeXnYYVb0cSxiW5_R7Osmzbv5K-fqWGZtMybYbJ6tZI7WcRlGKtDL7l0wU"
+VAPID_PRIVATE_KEY = "G_mlb4aDo183qzKDCVTXqyWS__UOcxPwtE4Vbzq7U_E"
+VAPID_EMAIL = "mailto:admin@olivaros.com"
