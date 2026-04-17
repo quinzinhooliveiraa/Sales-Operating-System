@@ -10,7 +10,8 @@ import {
   Menu,
   Bell,
   Search,
-  Plus
+  Plus,
+  Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/AppContext";
@@ -34,6 +35,7 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: bool
     { href: "/crm", label: t.crm, icon: Users },
     { href: "/tarefas", label: t.tasks, icon: CheckSquare },
     { href: "/calendario", label: t.calendar, icon: CalendarDays },
+    { href: "/zapier", label: "Zapier", icon: Zap },
   ];
 
   return (
