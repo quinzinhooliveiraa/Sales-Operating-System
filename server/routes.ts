@@ -50,6 +50,39 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/leads", async (_req, res) => {
     res.json(await storage.getLeads());
   });
+
+  app.post("/api/leads/bulk", async (req, res) => {
+    const { leads } = req.body;
+    if (!Array.isArray(leads) || leads.length === 0) {
+      return res.status(400).json({ error: "leads array required" });
+    }
+    let count = 0;
+    for (const lead of leads) {
+      if (!lead.name) continue;
+      try {
+        await storage.createLead({
+          name: lead.name,
+          email: lead.email || "",
+          phone: lead.phone || "",
+          company: lead.company || "",
+          value: lead.value || "R$ 0",
+          stage: lead.stage || "new",
+          owner: lead.owner || "",
+          tags: Array.isArray(lead.tags) ? lead.tags : [],
+          score: Number(lead.score) || 0,
+          formResponses: lead.formResponses || {},
+          notes: lead.notes || "",
+          history: [],
+          meetingDate: null,
+          nextTask: null,
+        });
+        count++;
+      } catch (e) {
+        console.error("Bulk import error for lead:", lead.name, e);
+      }
+    }
+    res.status(201).json({ success: true, count });
+  });
   app.get("/api/leads/:id", async (req, res) => {
     const lead = await storage.getLead(Number(req.params.id));
     if (!lead) return res.status(404).json({ error: "Lead not found" });
