@@ -10,7 +10,7 @@ export function triggerZapierEvent(event: string, payload: Record<string, unknow
 }
 
 export function useZapierSync() {
-  const { leads, tasks, addLead, addTask } = useAppContext();
+  const { leads, tasks, isLoading, addLead, addTask } = useAppContext();
   const prevLeadIds = useRef<Set<number>>(new Set());
   const prevTaskIds = useRef<Set<string>>(new Set());
   const prevTaskStatuses = useRef<Map<string, string>>(new Map());
@@ -18,6 +18,9 @@ export function useZapierSync() {
 
   // Track new leads and trigger outbound events
   useEffect(() => {
+    // Wait until data is fully loaded from server before tracking
+    if (isLoading) return;
+
     if (!initialized.current) {
       initialized.current = true;
       prevLeadIds.current = new Set(leads.map((l) => l.id));

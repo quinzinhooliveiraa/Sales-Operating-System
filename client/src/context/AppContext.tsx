@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useRef, useCallback } from 'react';
 
 export type Priority = 'do-now' | 'schedule' | 'delegate' | 'eliminate';
 
@@ -7,10 +7,10 @@ export type Task = {
   title: string;
   description: string;
   priority: Priority;
-  dueDate: string; // YYYY-MM-DD
+  dueDate: string;
   responsibleUser: string;
-  linkedLeadId?: number;
-  linkedStageId?: string;
+  linkedLeadId?: number | null;
+  linkedStageId?: string | null;
   status: 'pending' | 'completed';
   type: 'Manual' | 'Cadência Automática';
 };
@@ -25,7 +25,7 @@ export type Stage = {
   id: string;
   name: string;
   cadence: CadenceAction[];
-  scenarioType?: string;
+  scenarioType?: string | null;
 };
 
 export type UserSettings = {
@@ -54,78 +54,109 @@ export type Lead = {
   formResponses: Record<string, string>;
   notes: string;
   history: LeadActivity[];
-  meetingDate?: string;
-  nextTask?: string;
+  meetingDate?: string | null;
+  nextTask?: string | null;
 };
 
 export type CalendarEvent = {
   id: string;
   title: string;
-  date: string; // YYYY-MM-DD
-  hour: number; // 0-23
-  duration: number; // hours
+  date: string;
+  hour: number;
+  duration: number;
   type: 'meeting' | 'task';
-  linkedLeadId?: number;
-  linkedTaskId?: string;
-  style?: string;
+  linkedLeadId?: number | null;
+  linkedTaskId?: string | null;
+  style?: string | null;
 };
 
+// ─── API helpers ──────────────────────────────────────────────────────────────
+async function apiFetch(url: string, opts?: RequestInit) {
+  const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// ─── Normalize DB rows to frontend types ─────────────────────────────────────
+function normalizeLead(r: any): Lead {
+  return {
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    phone: r.phone,
+    company: r.company,
+    value: r.value,
+    stage: r.stage,
+    owner: r.owner,
+    tags: r.tags ?? [],
+    score: r.score ?? 0,
+    formResponses: r.formResponses ?? r.form_responses ?? {},
+    notes: r.notes ?? '',
+    history: r.history ?? [],
+    meetingDate: r.meetingDate ?? r.meeting_date ?? null,
+    nextTask: r.nextTask ?? r.next_task ?? null,
+  };
+}
+function normalizeTask(r: any): Task {
+  return {
+    id: r.id,
+    title: r.title,
+    description: r.description ?? '',
+    priority: r.priority as Priority,
+    dueDate: r.dueDate ?? r.due_date ?? '',
+    responsibleUser: r.responsibleUser ?? r.responsible_user ?? '',
+    linkedLeadId: r.linkedLeadId ?? r.linked_lead_id ?? null,
+    linkedStageId: r.linkedStageId ?? r.linked_stage_id ?? null,
+    status: r.status as 'pending' | 'completed',
+    type: r.type as 'Manual' | 'Cadência Automática',
+  };
+}
+function normalizeEvent(r: any): CalendarEvent {
+  return {
+    id: r.id,
+    title: r.title,
+    date: r.date,
+    hour: r.hour ?? 9,
+    duration: parseFloat(r.duration ?? '1'),
+    type: r.type as 'meeting' | 'task',
+    linkedLeadId: r.linkedLeadId ?? r.linked_lead_id ?? null,
+    linkedTaskId: r.linkedTaskId ?? r.linked_task_id ?? null,
+    style: r.style ?? null,
+  };
+}
+function normalizeStage(r: any): Stage {
+  return {
+    id: r.id,
+    name: r.name,
+    cadence: (r.cadence as CadenceAction[]) ?? [],
+    scenarioType: r.scenarioType ?? r.scenario_type ?? null,
+  };
+}
+
+// ─── Context type ─────────────────────────────────────────────────────────────
 interface AppContextType {
   settings: UserSettings;
   setSettings: (settings: UserSettings | ((prev: UserSettings) => UserSettings)) => void;
   stages: Stage[];
   setStages: (stages: Stage[]) => void;
   leads: Lead[];
-  setLeads: (leads: Lead[]) => void;
+  setLeads: (leads: Lead[] | ((prev: Lead[]) => Lead[])) => void;
   tasks: Task[];
-  setTasks: (tasks: Task[]) => void;
+  setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void;
   events: CalendarEvent[];
-  setEvents: (events: CalendarEvent[]) => void;
+  setEvents: (events: CalendarEvent[] | ((prev: CalendarEvent[]) => CalendarEvent[])) => void;
   updateLeadStage: (leadId: number, stageId: string, restartCadence?: boolean) => void;
   addLead: (lead: Omit<Lead, 'id'>) => Lead;
   addTask: (task: Omit<Task, 'id'>) => Task;
   addEvent: (event: Omit<CalendarEvent, 'id'>) => CalendarEvent;
+  deleteLead: (id: number) => void;
+  deleteTask: (id: string) => void;
   formatCurrency: (value: number | string) => string;
   t: Record<string, string>;
+  isLoading: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
-
-const INITIAL_STAGES: Stage[] = [
-  { id: 'new', name: 'Novos Leads', scenarioType: 'Cold call funnel', cadence: [{ type: 'email', intervalValue: 0, intervalUnit: 'minutes' }, { type: 'call', intervalValue: 1, intervalUnit: 'days' }] },
-  { id: 'qualified', name: 'Qualificados', scenarioType: 'Meeting follow-up funnel', cadence: [{ type: 'call', intervalValue: 2, intervalUnit: 'days' }] },
-  { id: 'demo', name: 'Demo Agendada', cadence: [] },
-  { id: 'negotiation', name: 'Negociação', cadence: [{ type: 'email', intervalValue: 3, intervalUnit: 'days' }, { type: 'call', intervalValue: 5, intervalUnit: 'days' }] },
-  { id: 'won', name: 'Fechado/Ganho', cadence: [] },
-];
-
-const INITIAL_LEADS: Lead[] = [
-  { id: 1, name: "Acme Corp", email: "sarah@acme.com", phone: "+55 11 99999-9999", company: "Acme Corp", value: "R$ 12.000", stage: "new", owner: "Quinzinho", tags: ["SaaS", "Inbound"], score: 85, formResponses: { "Tamanho da empresa": "50-200", "Desafio": "Vendas inconsistentes" }, notes: "Lead muito interessado, priorizar.", history: [{ id: 'h1', type: 'stage_change', description: 'Entrou no pipeline', date: new Date().toISOString() }] },
-  { id: 2, name: "TechFlow", email: "mike@techflow.io", phone: "+55 11 98888-8888", company: "TechFlow", value: "R$ 5.500", stage: "qualified", owner: "João", tags: ["E-commerce"], score: 62, formResponses: { "Tamanho da empresa": "1-10", "Desafio": "Custo de aquisição alto" }, notes: "", history: [] },
-  { id: 3, name: "Global Ind.", email: "alex@globalind.com", phone: "+55 11 97777-7777", company: "Global Industries", value: "R$ 24.000", stage: "demo", owner: "Quinzinho", tags: ["Enterprise"], score: 95, formResponses: { "Tamanho da empresa": "500+", "Desafio": "Escalar operação global" }, notes: "Preparar case study similar.", history: [] },
-  { id: 4, name: "Startup Inc", email: "john@startup.inc", phone: "+55 11 96666-6666", company: "Startup Inc", value: "R$ 2.000", stage: "new", owner: "Maria", tags: ["Outbound"], score: 40, formResponses: {}, notes: "", history: [] },
-  { id: 5, name: "Inovação S.A.", email: "lisa@inovacao.sa", phone: "+55 11 95555-5555", company: "Inovação S.A.", value: "R$ 8.500", stage: "negotiation", owner: "Quinzinho", tags: ["SaaS"], score: 78, formResponses: { "Tamanho da empresa": "11-50" }, notes: "Aguardando aprovação do financeiro.", history: [] },
-];
-
-const getToday = () => new Date().toISOString().split('T')[0];
-const getTomorrow = () => {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().split('T')[0];
-};
-
-const INITIAL_TASKS: Task[] = [
-  { id: 't1', title: "Email de follow-up para Acme Corp", description: "Mandar o template 2", priority: 'do-now', dueDate: getToday(), responsibleUser: 'Quinzinho', status: 'pending', type: 'Cadência Automática', linkedLeadId: 1 },
-  { id: 't2', title: "Preparar ambiente de demo para TechFlow", description: "Configurar integrações básicas", priority: 'schedule', dueDate: getTomorrow(), responsibleUser: 'Quinzinho', status: 'pending', type: 'Manual', linkedLeadId: 2 },
-  { id: 't3', title: "Enviar contrato para Global Ind.", description: "Revisar cláusula 4 antes de enviar", priority: 'do-now', dueDate: getToday(), responsibleUser: 'Quinzinho', status: 'completed', type: 'Manual', linkedLeadId: 3 },
-  { id: 't4', title: "Atualizar registros de CRM", description: "Limpar leads antigos", priority: 'delegate', dueDate: getTomorrow(), responsibleUser: 'João', status: 'pending', type: 'Manual' },
-];
-
-const INITIAL_EVENTS: CalendarEvent[] = [
-  { id: 'e1', title: "Call de Descoberta: Acme", date: getToday(), hour: 10, duration: 1, type: "meeting", linkedLeadId: 1, style: "border-blue-500 bg-blue-500/10 text-foreground" },
-  { id: 'e2', title: "Demo: Global Ind.", date: getTomorrow(), hour: 14, duration: 1.5, type: "meeting", linkedLeadId: 3, style: "border-primary bg-primary/10 text-foreground" },
-];
-
 
 export const getGlobalTranslations = (lang: string) => {
   switch(lang) {
@@ -169,139 +200,269 @@ export const getGlobalTranslations = (lang: string) => {
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [settings, setSettings] = useState<UserSettings>({ language: 'pt-BR', currency: 'BRL' });
+  const [settings, setSettingsState] = useState<UserSettings>({ language: 'pt-BR', currency: 'BRL' });
+  const [stages, setStagesState] = useState<Stage[]>([]);
+  const [leads, setLeadsState] = useState<Lead[]>([]);
+  const [tasks, setTasksState] = useState<Task[]>([]);
+  const [events, setEventsState] = useState<CalendarEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleSetSettings = (newSettings: UserSettings | ((prev: UserSettings) => UserSettings)) => {
-    setSettings(prev => {
+  // Track server state for diffing
+  const serverLeads = useRef<Map<number, Lead>>(new Map());
+  const serverTasks = useRef<Map<string, Task>>(new Map());
+
+  // ─── Load all data from API on mount ───────────────────────────────────
+  useEffect(() => {
+    setIsLoading(true);
+    Promise.all([
+      apiFetch('/api/settings'),
+      apiFetch('/api/stages'),
+      apiFetch('/api/leads'),
+      apiFetch('/api/tasks'),
+      apiFetch('/api/events'),
+    ]).then(([s, stg, l, t, e]) => {
+      if (s) setSettingsState({ language: s.language, currency: s.currency });
+      const normalizedStages = (stg as any[]).map(normalizeStage);
+      setStagesState(normalizedStages);
+      const normalizedLeads = (l as any[]).map(normalizeLead);
+      setLeadsState(normalizedLeads);
+      serverLeads.current = new Map(normalizedLeads.map(l => [l.id, l]));
+      const normalizedTasks = (t as any[]).map(normalizeTask);
+      setTasksState(normalizedTasks);
+      serverTasks.current = new Map(normalizedTasks.map(t => [t.id, t]));
+      setEventsState((e as any[]).map(normalizeEvent));
+    }).catch(console.error).finally(() => setIsLoading(false));
+  }, []);
+
+  // ─── Settings ───────────────────────────────────────────────────────────
+  const setSettings = useCallback((newSettings: UserSettings | ((prev: UserSettings) => UserSettings)) => {
+    setSettingsState(prev => {
       const next = typeof newSettings === 'function' ? newSettings(prev) : newSettings;
-      if (next && next.language) {
-        document.documentElement.lang = next.language.split('-')[0];
-      }
+      if (next?.language) document.documentElement.lang = next.language.split('-')[0];
+      apiFetch('/api/settings', { method: 'PATCH', body: JSON.stringify(next) }).catch(console.error);
       return next;
     });
-  };
-  const [stages, setStages] = useState<Stage[]>(INITIAL_STAGES);
-  const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS);
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-  const [events, setEvents] = useState<CalendarEvent[]>(INITIAL_EVENTS);
+  }, []);
 
-  
-  const formatCurrency = (value: number | string) => {
+  // ─── Leads ──────────────────────────────────────────────────────────────
+  const setLeads = useCallback((updater: Lead[] | ((prev: Lead[]) => Lead[])) => {
+    setLeadsState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      // Sync changed leads to API
+      next.forEach(lead => {
+        const old = serverLeads.current.get(lead.id);
+        if (old && (old.stage !== lead.stage || JSON.stringify(old) !== JSON.stringify(lead))) {
+          apiFetch(`/api/leads/${lead.id}`, { method: 'PATCH', body: JSON.stringify({
+            stage: lead.stage, name: lead.name, email: lead.email, phone: lead.phone,
+            company: lead.company, value: lead.value, owner: lead.owner, tags: lead.tags,
+            score: lead.score, notes: lead.notes, history: lead.history,
+            formResponses: lead.formResponses, meetingDate: lead.meetingDate, nextTask: lead.nextTask,
+          }) }).then(updated => {
+            serverLeads.current.set(lead.id, normalizeLead(updated));
+          }).catch(console.error);
+        }
+      });
+      serverLeads.current = new Map(next.map(l => [l.id, l]));
+      return next;
+    });
+  }, []);
+
+  // ─── Tasks ───────────────────────────────────────────────────────────────
+  const setTasks = useCallback((updater: Task[] | ((prev: Task[]) => Task[])) => {
+    setTasksState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      next.forEach(task => {
+        const old = serverTasks.current.get(task.id);
+        if (old && JSON.stringify(old) !== JSON.stringify(task)) {
+          apiFetch(`/api/tasks/${task.id}`, { method: 'PATCH', body: JSON.stringify({
+            status: task.status, title: task.title, description: task.description,
+            priority: task.priority, dueDate: task.dueDate, responsibleUser: task.responsibleUser,
+          }) }).then(updated => {
+            serverTasks.current.set(task.id, normalizeTask(updated));
+          }).catch(console.error);
+        }
+      });
+      serverTasks.current = new Map(next.map(t => [t.id, t]));
+      return next;
+    });
+  }, []);
+
+  // ─── Events ──────────────────────────────────────────────────────────────
+  const setEvents = useCallback((updater: CalendarEvent[] | ((prev: CalendarEvent[]) => CalendarEvent[])) => {
+    setEventsState(prev => typeof updater === 'function' ? updater(prev) : updater);
+  }, []);
+
+  // ─── Stages ──────────────────────────────────────────────────────────────
+  const setStages = useCallback((newStages: Stage[]) => {
+    setStagesState(newStages);
+    newStages.forEach((stage, idx) => {
+      apiFetch(`/api/stages/${stage.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ id: stage.id, name: stage.name, scenarioType: stage.scenarioType, cadence: stage.cadence, position: idx }),
+      }).catch(console.error);
+    });
+  }, []);
+
+  // ─── Format currency ─────────────────────────────────────────────────────
+  const formatCurrency = useCallback((value: number | string) => {
     if (!value) return "R$ 0";
     const num = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]+/g, "")) : value;
     if (isNaN(num)) return typeof value === 'string' ? value : value.toString();
-    
     return new Intl.NumberFormat(settings?.language || 'pt-BR', {
-      style: 'currency',
-      currency: settings?.currency || 'BRL',
-      maximumFractionDigits: 0
+      style: 'currency', currency: settings?.currency || 'BRL', maximumFractionDigits: 0
     }).format(num);
-  };
+  }, [settings]);
 
-  const addTask = (task: Omit<Task, 'id'>) => {
-    const newTask = { ...task, id: Math.random().toString(36).substr(2, 9) };
-    setTasks(prev => [...prev, newTask]);
-    return newTask;
-  };
+  // ─── addTask ─────────────────────────────────────────────────────────────
+  const addTask = useCallback((task: Omit<Task, 'id'>): Task => {
+    const tempId = Math.random().toString(36).substr(2, 9);
+    const optimistic: Task = { ...task, id: tempId };
+    setTasksState(prev => [...prev, optimistic]);
+    apiFetch('/api/tasks', { method: 'POST', body: JSON.stringify({
+      title: task.title, description: task.description, priority: task.priority,
+      dueDate: task.dueDate, responsibleUser: task.responsibleUser,
+      linkedLeadId: task.linkedLeadId, linkedStageId: task.linkedStageId,
+      status: task.status, type: task.type,
+    }) }).then(created => {
+      const normalized = normalizeTask(created);
+      setTasksState(prev => prev.map(t => t.id === tempId ? normalized : t));
+      serverTasks.current.set(normalized.id, normalized);
+    }).catch(console.error);
+    return optimistic;
+  }, []);
 
-  const addEvent = (event: Omit<CalendarEvent, 'id'>) => {
-    const newEvent = { ...event, id: Math.random().toString(36).substr(2, 9) };
-    setEvents(prev => [...prev, newEvent]);
-    return newEvent;
-  };
+  // ─── addEvent ────────────────────────────────────────────────────────────
+  const addEvent = useCallback((event: Omit<CalendarEvent, 'id'>): CalendarEvent => {
+    const tempId = Math.random().toString(36).substr(2, 9);
+    const optimistic: CalendarEvent = { ...event, id: tempId };
+    setEventsState(prev => [...prev, optimistic]);
+    apiFetch('/api/events', { method: 'POST', body: JSON.stringify({
+      title: event.title, date: event.date, hour: event.hour,
+      duration: String(event.duration), type: event.type,
+      linkedLeadId: event.linkedLeadId, linkedTaskId: event.linkedTaskId, style: event.style,
+    }) }).then(created => {
+      const normalized = normalizeEvent(created);
+      setEventsState(prev => prev.map(e => e.id === tempId ? normalized : e));
+    }).catch(console.error);
+    return optimistic;
+  }, []);
 
-  
-  const addLead = (lead: Omit<Lead, 'id'>) => {
-    const newLead = { ...lead, id: Math.floor(Math.random() * 100000) } as Lead;
-    setLeads(prev => [...prev, newLead]);
-    
-    // Auto-trigger cadence for initial stage
-    const stage = stages.find(s => s.id === newLead.stage);
-    
-    if (stage && stage.cadence && stage.cadence.length > 0) {
-      stage.cadence.forEach((action, idx) => {
-        const d = new Date();
-        if (action.intervalUnit === 'minutes') d.setMinutes(d.getMinutes() + action.intervalValue);
-        else if (action.intervalUnit === 'hours') d.setHours(d.getHours() + action.intervalValue);
-        else if (action.intervalUnit === 'days') d.setDate(d.getDate() + action.intervalValue);
-        else if (action.intervalUnit === 'months') d.setMonth(d.getMonth() + action.intervalValue);
-        else if (action.intervalUnit === 'years') d.setFullYear(d.getFullYear() + action.intervalValue);
-        const actionText = action.type === 'call' ? 'Ligar para' : action.type === 'email' ? 'Email para' : 'Mensagem para';
-        const newTask = addTask({
-          title: `${actionText} ${newLead.name} (Touch ${idx + 1})`,
-          description: `Gerado automaticamente ao criar lead na etapa ${stage.name}`,
-          priority: 'do-now',
-          dueDate: d.toISOString().split('T')[0],
-          responsibleUser: newLead.owner || 'Quinzinho',
-          status: 'pending',
-          type: 'Cadência Automática',
-          linkedLeadId: newLead.id,
-          linkedStageId: newLead.stage
-        });
-        
-        if (action.type === 'call') {
+  // ─── addLead ─────────────────────────────────────────────────────────────
+  const addLead = useCallback((lead: Omit<Lead, 'id'>): Lead => {
+    const tempId = Math.floor(Math.random() * -1000000);
+    const optimistic: Lead = { ...lead, id: tempId };
+    setLeadsState(prev => [...prev, optimistic]);
+
+    apiFetch('/api/leads', { method: 'POST', body: JSON.stringify({
+      name: lead.name, email: lead.email, phone: lead.phone, company: lead.company,
+      value: lead.value, stage: lead.stage, owner: lead.owner, tags: lead.tags,
+      score: lead.score, formResponses: lead.formResponses, notes: lead.notes,
+      history: lead.history, meetingDate: lead.meetingDate, nextTask: lead.nextTask,
+    }) }).then(created => {
+      const normalized = normalizeLead(created);
+      setLeadsState(prev => prev.map(l => l.id === tempId ? normalized : l));
+      serverLeads.current.set(normalized.id, normalized);
+      // Trigger cadence
+      const stage = stages.find(s => s.id === normalized.stage);
+      if (stage?.cadence?.length) {
+        stage.cadence.forEach((action, idx) => {
+          const d = new Date();
+          if (action.intervalUnit === 'minutes') d.setMinutes(d.getMinutes() + action.intervalValue);
+          else if (action.intervalUnit === 'hours') d.setHours(d.getHours() + action.intervalValue);
+          else if (action.intervalUnit === 'days') d.setDate(d.getDate() + action.intervalValue);
+          const actionText = action.type === 'call' ? 'Ligar para' : action.type === 'email' ? 'Email para' : 'Mensagem para';
+          const newTask = addTask({
+            title: `${actionText} ${normalized.name} (Touch ${idx + 1})`,
+            description: `Gerado automaticamente ao criar lead na etapa ${stage.name}`,
+            priority: 'do-now', dueDate: d.toISOString().split('T')[0],
+            responsibleUser: normalized.owner || 'Quinzinho',
+            status: 'pending', type: 'Cadência Automática',
+            linkedLeadId: normalized.id, linkedStageId: normalized.stage,
+          });
+          if (action.type === 'call') {
             addEvent({
-              title: `[Tarefa] ${actionText} ${newLead.name}`,
-              date: d.toISOString().split('T')[0],
-              hour: 9 + (idx % 8), // Spread hours a bit
-              duration: 0.5,
-              type: 'task',
-              linkedLeadId: newLead.id,
-              linkedTaskId: newTask.id,
-              style: "border-muted-foreground bg-secondary text-muted-foreground"
+              title: `[Tarefa] ${actionText} ${normalized.name}`,
+              date: d.toISOString().split('T')[0], hour: 9 + (idx % 8), duration: 0.5,
+              type: 'task', linkedLeadId: normalized.id, linkedTaskId: newTask.id,
+              style: "border-muted-foreground bg-secondary text-muted-foreground",
             });
-        }
-      });
-    }
-    
-    return newLead;
-  };
+          }
+        });
+      }
+    }).catch(console.error);
 
-  const updateLeadStage = (leadId: number, stageId: string, restartCadence: boolean = true) => {
-    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, stage: stageId } : l));
-    
-    // Generate tasks based on cadence
-    const stage = stages.find(s => s.id === stageId);
-    if (stage && stage.cadence.length > 0) {
-      stage.cadence.forEach((action, idx) => {
-        const d = new Date();
-        if (action.intervalUnit === 'minutes') d.setMinutes(d.getMinutes() + action.intervalValue);
-        else if (action.intervalUnit === 'hours') d.setHours(d.getHours() + action.intervalValue);
-        else if (action.intervalUnit === 'days') d.setDate(d.getDate() + action.intervalValue);
-        else if (action.intervalUnit === 'months') d.setMonth(d.getMonth() + action.intervalValue);
-        else if (action.intervalUnit === 'years') d.setFullYear(d.getFullYear() + action.intervalValue);
-        const actionText = action.type === 'call' ? 'Ligar para' : action.type === 'email' ? 'Email para' : 'Mensagem para';
-        const lead = leads.find(l => l.id === leadId);
-        const newTask = addTask({
-          title: `${actionText} ${lead?.name || 'Lead'} (Touch ${idx + 1})`,
-          description: `Gerado automaticamente ao mover para a etapa ${stage.name}`,
-          priority: 'do-now',
-          dueDate: d.toISOString().split('T')[0],
-          responsibleUser: 'Quinzinho', // Default
-          status: 'pending',
-          type: 'Cadência Automática',
-          linkedLeadId: leadId,
-          linkedStageId: stageId
+    return optimistic;
+  }, [stages, addTask, addEvent]);
+
+  // ─── deleteLead ──────────────────────────────────────────────────────────
+  const deleteLead = useCallback((id: number) => {
+    setLeadsState(prev => prev.filter(l => l.id !== id));
+    serverLeads.current.delete(id);
+    apiFetch(`/api/leads/${id}`, { method: 'DELETE' }).catch(console.error);
+  }, []);
+
+  // ─── deleteTask ──────────────────────────────────────────────────────────
+  const deleteTask = useCallback((id: string) => {
+    setTasksState(prev => prev.filter(t => t.id !== id));
+    serverTasks.current.delete(id);
+    apiFetch(`/api/tasks/${id}`, { method: 'DELETE' }).catch(console.error);
+  }, []);
+
+  // ─── updateLeadStage ─────────────────────────────────────────────────────
+  const updateLeadStage = useCallback((leadId: number, stageId: string, restartCadence: boolean = true) => {
+    setLeadsState(prev => {
+      const updated = prev.map(l => l.id === leadId ? { ...l, stage: stageId } : l);
+      const lead = updated.find(l => l.id === leadId);
+      if (lead) {
+        const history = [...(lead.history || []), {
+          id: Math.random().toString(36).substr(2, 9),
+          type: 'stage_change' as const,
+          description: `Movido para ${stages.find(s => s.id === stageId)?.name || stageId}`,
+          date: new Date().toISOString(),
+        }];
+        apiFetch(`/api/leads/${leadId}`, { method: 'PATCH', body: JSON.stringify({ stage: stageId, history }) })
+          .then(updated => serverLeads.current.set(leadId, normalizeLead(updated)))
+          .catch(console.error);
+      }
+      return updated;
+    });
+
+    if (restartCadence) {
+      const stage = stages.find(s => s.id === stageId);
+      if (stage?.cadence?.length) {
+        stage.cadence.forEach((action, idx) => {
+          const d = new Date();
+          if (action.intervalUnit === 'minutes') d.setMinutes(d.getMinutes() + action.intervalValue);
+          else if (action.intervalUnit === 'hours') d.setHours(d.getHours() + action.intervalValue);
+          else if (action.intervalUnit === 'days') d.setDate(d.getDate() + action.intervalValue);
+          const actionText = action.type === 'call' ? 'Ligar para' : action.type === 'email' ? 'Email para' : 'Mensagem para';
+          const lead = leads.find(l => l.id === leadId);
+          const newTask = addTask({
+            title: `${actionText} ${lead?.name || 'Lead'} (Touch ${idx + 1})`,
+            description: `Gerado automaticamente ao mover para a etapa ${stage.name}`,
+            priority: 'do-now', dueDate: d.toISOString().split('T')[0],
+            responsibleUser: 'Quinzinho', status: 'pending', type: 'Cadência Automática',
+            linkedLeadId: leadId, linkedStageId: stageId,
+          });
+          addEvent({
+            title: `[Tarefa] ${actionText} ${lead?.name || 'Lead'}`,
+            date: d.toISOString().split('T')[0], hour: 9, duration: 0.5,
+            type: 'task', linkedLeadId: leadId, linkedTaskId: newTask.id,
+            style: "border-muted-foreground bg-secondary text-muted-foreground",
+          });
         });
-        
-        // Optionally auto-schedule in calendar (e.g. at 9 AM) if it's a call
-        addEvent({
-          title: `[Tarefa] ${actionText} ${lead?.name || 'Lead'}`,
-          date: d.toISOString().split('T')[0],
-          hour: 9,
-          duration: 0.5,
-          type: 'task',
-          linkedLeadId: leadId,
-          linkedTaskId: newTask.id,
-          style: "border-muted-foreground bg-secondary text-muted-foreground"
-        });
-      });
+      }
     }
-  };
+  }, [stages, leads, addTask, addEvent]);
 
   const t = getGlobalTranslations(settings?.language || 'pt-BR');
+
   return (
-  <AppContext.Provider value={{ settings, setSettings: handleSetSettings, stages, setStages, leads, setLeads, tasks, setTasks, events, setEvents, updateLeadStage, addTask, addEvent, addLead, formatCurrency, t }}>
+    <AppContext.Provider value={{
+      settings, setSettings, stages, setStages, leads, setLeads, tasks, setTasks,
+      events, setEvents, updateLeadStage, addTask, addEvent, addLead,
+      deleteLead, deleteTask, formatCurrency, t, isLoading,
+    }}>
       {children}
     </AppContext.Provider>
   );
@@ -309,8 +470,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAppContext = () => {
   const context = useContext(AppContext);
-  if (context === undefined) {
-    throw new Error('useAppContext must be used within an AppProvider');
-  }
+  if (context === undefined) throw new Error('useAppContext must be used within an AppProvider');
   return context;
 };
