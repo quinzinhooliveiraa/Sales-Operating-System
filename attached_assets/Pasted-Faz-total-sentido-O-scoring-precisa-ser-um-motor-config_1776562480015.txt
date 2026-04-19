@@ -1,0 +1,140 @@
+Faz total sentido. O scoring precisa ser um motor configurável, não fixo. Vou atualizar o prompt:
+
+## 🎯 CRM — Scoring Adaptável + Cadência Personalizável
+
+Ajuste APENAS scoring e cadência do CRM.
+Não altere outras telas ou módulos.
+
+---
+
+### ✅ 1. MOTOR DE SCORING CONFIGURÁVEL
+
+Criar tela em "CRM Settings" → "Score Settings" onde o usuário 
+define as próprias regras de pontuação.
+
+**O usuário configura:**
+
+**Eventos e pontos**
+Lista editável de eventos com campo de pontos (positivo ou negativo):
+O usuário pode adicionar, editar, remover e reordenar eventos.
+
+Exemplos de eventos padrão (todos editáveis):
+| Evento | Pontos padrão |
+|---|---|
+| Replied to message 1 | +30 |
+| Replied to message 2 | +30 |
+| Replied quickly (< 2h) | +20 |
+| Scheduled a call | +20 |
+| No response after 24h | −15 |
+| No response after 48h | −25 |
+| Requested cancellation | −50 |
+| Showed up to call | +50 |
+| No-show | −40 |
+| Opened email | +5 |
+| Clicked link | +15 |
+
+O usuário pode criar eventos customizados com nome livre e pontos.
+
+**Faixas de classificação (labels)**
+O usuário define quantas faixas quiser, cada uma com:
+- Nome do label (ex: "Very Likely", "At Risk", "Frio", "Quente" — livre)
+- Score mínimo e máximo da faixa
+- Cor (picker de cor)
+- Ícone (emoji livre)
+
+Exemplos padrão (todos editáveis):
+| Label | Score | Cor | Ícone |
+|---|---|---|---|
+| Very Likely | 80–100 | Verde | 🔥 |
+| Likely | 60–79 | Verde claro | 🟢 |
+| Possible | 40–59 | Amarelo | 🟡 |
+| At Risk | 20–39 | Laranja | 🟠 |
+| Unlikely | 0–19 | Vermelho | 🔴 |
+
+O usuário pode renomear, recolorir, adicionar ou remover faixas.
+Ex: quem quiser usar Frio/Morno/Quente configura assim.
+Ex: quem usa modelo de show-up configura com Very Likely/At Risk.
+
+**Score máximo**
+Calculado automaticamente somando todos os eventos positivos possíveis.
+Exibido no card como: 74/100 ou 74% dependendo da preferência do usuário.
+
+---
+
+### ✅ 2. CADÊNCIA PERSONALIZÁVEL
+
+Criar tela "CRM Settings" → "Cadences" onde o usuário monta 
+suas próprias cadências do zero.
+
+**O usuário define por cadência:**
+- Nome da cadência (ex: "Pós-agendamento", "Reaquecimento", "No-show")
+- Quando ela dispara: manualmente / ao agendar / ao dar no-show / etc.
+- Lista de passos em ordem
+
+**Cada passo tem:**
+- Dia de execução (Dia 1, Dia 2, Dia 5...)
+- Canal: OpenPhone / Email / Tarefa manual
+- Template de mensagem com variáveis dinâmicas:
+  {first_name}, {company}, {call_date}, {call_time}, {reschedule_link}
+- Condição opcional: "Só executar se lead NÃO respondeu o passo anterior"
+- Condição opcional: "Só executar se lead respondeu o passo anterior"
+
+**Exemplo de cadência padrão já configurada (editável):**
+
+Cadência: "Post-Scheduling" — dispara ao agendar call
+
+Passo 1 — Dia 1 — OpenPhone
+Condição: sempre enviar
+"Hey {first_name}! Just confirming your call on {call_date} at 
+{call_time}. Feel free to reschedule: {reschedule_link}"
+
+Passo 2 — Dia 2 — OpenPhone  
+Condição: enviar sempre
+"Hey {first_name}, quick heads-up — we'll be calling you at 
+{call_time} to learn more about your business. Looking forward! 🙌"
+
+Passo 3 — Dia 2 — Tarefa manual
+"Call {first_name} — check if showed up and log outcome"
+
+O usuário pode criar cadências ilimitadas para diferentes 
+cenários (no-show, reaquecimento, pós-venda, etc.)
+
+---
+
+### ✅ 3. NOTIFICAÇÕES BASEADAS NAS REGRAS CONFIGURADAS
+
+As notificações disparam com base nos eventos que o 
+usuário configurou no Score Settings:
+
+- Quando um evento positivo ocorre → notifica com ação sugerida
+- Quando score cai abaixo de um threshold configurável → alerta
+- Antes da call → lembrete com status atual do score
+
+O usuário define o threshold de alerta:
+"Notificar quando score cair abaixo de: [___]"
+
+---
+
+### ✅ 4. RESULTADO DA CALL (configurável)
+
+O usuário define os possíveis outcomes da call:
+Padrão: Showed up - Interested / Showed up - Not a fit / 
+No-show / Rescheduled
+
+Cada outcome pode:
+- Disparar uma cadência automaticamente
+- Atribuir pontos ao score (positivo ou negativo)
+- Mover o lead para um estágio do pipeline
+
+---
+
+### ⚠️ REGRAS GERAIS
+
+- Configurações de scoring e cadência são por workspace (conta)
+- Mudanças nas regras NÃO recalculam scores passados — só afetam eventos futuros
+- Exportar/importar configurações de scoring em JSON
+- Não alterar dark/light theme existente
+- Não mexer em outras telas fora do CRM
+
+
+A diferença chave: o sistema vira um motor, não uma opinião. Quem faz inside sales americano configura de um jeito, quem faz B2B brasileiro configura de outro — o mesmo CRM serve os dois. Quer que eu já monte o prompt da próxima fase?​​​​​​​​​​​​​​​​
