@@ -15,6 +15,7 @@ import CalendarView from "@/pages/CalendarView";
 import TasksView from "@/pages/TasksView";
 import ZapierPage from "@/pages/ZapierPage";
 import ImportPage from "@/pages/ImportPage";
+import CRMSettingsPage from "@/pages/CRMSettingsPage";
 import { useZapierSync } from "@/hooks/useZapierSync";
 
 function Router() {
@@ -29,6 +30,7 @@ function Router() {
         <Route path="/tarefas" component={TasksView}/>
         <Route path="/zapier" component={ZapierPage}/>
         <Route path="/importar" component={ImportPage}/>
+        <Route path="/crm-config" component={CRMSettingsPage}/>
         <Route component={NotFound} />
       </Switch>
     </Layout>

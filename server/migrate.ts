@@ -72,6 +72,11 @@ export async function runMigrations() {
       );
     `);
 
+    // Add crm_config column if it doesn't exist yet
+    await db.execute(sql`
+      ALTER TABLE settings ADD COLUMN IF NOT EXISTS crm_config JSONB DEFAULT '{}'::jsonb;
+    `);
+
     // Seed default stages if empty
     const existingStages = await db.execute(sql`SELECT COUNT(*) as count FROM stages`);
     const stageCount = Number((existingStages.rows[0] as any).count);

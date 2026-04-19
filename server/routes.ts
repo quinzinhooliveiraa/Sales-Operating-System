@@ -32,6 +32,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(await storage.upsertSettings(req.body));
   });
 
+  // ─── CRM Config ─────────────────────────────────────────────────────────
+  app.get("/api/crm-config", async (_req, res) => {
+    const s = await storage.getSettings();
+    res.json((s as any).crm_config || (s as any).crmConfig || {});
+  });
+  app.patch("/api/crm-config", async (req, res) => {
+    await storage.upsertSettings({ crmConfig: req.body } as any);
+    res.json(req.body);
+  });
+
   // ─── Stages ─────────────────────────────────────────────────────────────
   app.get("/api/stages", async (_req, res) => {
     res.json(await storage.getStages());

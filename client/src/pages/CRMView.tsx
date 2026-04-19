@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, MoreHorizontal, Clock, DollarSign, Calendar, Target, Activity, Phone, Mail, Settings2, Trash2, User, X, Mic, Loader2, ChevronDown, ChevronRight, CheckSquare, Square, Edit2, PlusCircle, Check, ArrowRightLeft } from "lucide-react";
+import { Plus, MoreHorizontal, Clock, DollarSign, Calendar, Target, Activity, Phone, Mail, Settings2, Trash2, User, X, Mic, Loader2, ChevronDown, ChevronRight, CheckSquare, Square, Edit2, PlusCircle, Check, ArrowRightLeft, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -9,7 +9,7 @@ import { useAppContext } from "@/context/AppContext";
 import type { Lead, Stage, CadenceAction } from "@/context/AppContext";
 
 export default function CRMView() {
-  const { stages, setStages, leads, setLeads, updateLeadStage, addLead, formatCurrency, t, deleteLead, addTask } = useAppContext();
+  const { stages, setStages, leads, setLeads, updateLeadStage, addLead, formatCurrency, t, deleteLead, addTask, crmConfig } = useAppContext();
   const { tasks, setTasks } = useAppContext();
 
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
@@ -176,7 +176,21 @@ export default function CRMView() {
   };
   const handleStageDragEnd = () => { setDraggedStageId(null); };
 
+  const getScoreBand = (score: number) => {
+    const band = crmConfig?.scoreBands?.find(b => score >= b.minScore && score <= b.maxScore);
+    return band || null;
+  };
+
+  const maxPossibleScore = crmConfig?.scoreEvents?.reduce((sum, e) => e.points > 0 ? sum + e.points : sum, 0) || 100;
+
+  const formatScore = (score: number) => {
+    if (crmConfig?.displayFormat === 'percent') return `${Math.round((score / maxPossibleScore) * 100)}%`;
+    return `${score}/${maxPossibleScore}`;
+  };
+
   const getScoreColor = (score: number) => {
+    const band = getScoreBand(score);
+    if (band) return `font-bold`;
     if (score >= 80) return "text-emerald-500 bg-emerald-500/10";
     if (score >= 60) return "text-amber-500 bg-amber-500/10";
     return "text-muted-foreground bg-secondary";
@@ -430,9 +444,21 @@ export default function CRMView() {
 
                         <div className="flex justify-between items-start mb-2">
                           <h4 className="font-medium text-sm text-foreground pr-5">{lead.name}</h4>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${getScoreColor(lead.score)}`}>
-                            <Target className="w-2.5 h-2.5" /> {lead.score}
-                          </span>
+                          {(() => {
+                            const band = getScoreBand(lead.score);
+                            return band ? (
+                              <span
+                                className="text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1"
+                                style={{ backgroundColor: band.color + '20', color: band.color }}
+                              >
+                                {band.emoji} {formatScore(lead.score)}
+                              </span>
+                            ) : (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${getScoreColor(lead.score)}`}>
+                                <Target className="w-2.5 h-2.5" /> {formatScore(lead.score)}
+                              </span>
+                            );
+                          })()}
                         </div>
 
                         <div className="flex items-center justify-between mb-3">
@@ -504,11 +530,23 @@ export default function CRMView() {
 
               {/* Header */}
               <div>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h2 className="text-2xl font-bold">{selectedLead.name}</h2>
-                  <span className={`text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 ${getScoreColor(selectedLead.score)}`}>
-                    Score: {selectedLead.score}
-                  </span>
+                  {(() => {
+                    const band = getScoreBand(selectedLead.score);
+                    return band ? (
+                      <span
+                        className="text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1"
+                        style={{ backgroundColor: band.color + '20', color: band.color }}
+                      >
+                        {band.emoji} {band.name} · {formatScore(selectedLead.score)}
+                      </span>
+                    ) : (
+                      <span className={`text-xs font-bold px-2 py-1 rounded-md ${getScoreColor(selectedLead.score)}`}>
+                        Score: {formatScore(selectedLead.score)}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {/* Basic info - inline editable */}
@@ -652,6 +690,40 @@ export default function CRMView() {
                   ))}
                 </div>
               </div>
+
+              {/* ── Aplicar Evento de Score ── */}
+              {crmConfig?.scoreEvents?.length > 0 && (
+                <div className="space-y-3 border-t pt-4">
+                  <h3 className="font-semibold flex items-center gap-2 text-sm"><Zap className="w-4 h-4 text-amber-500" /> Aplicar Evento de Score</h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {crmConfig.scoreEvents.map(event => (
+                      <button
+                        key={event.id}
+                        onClick={() => {
+                          const newScore = Math.max(0, Math.min(selectedLead.score + event.points, maxPossibleScore));
+                          const historyEntry = {
+                            id: Math.random().toString(36).substr(2, 9),
+                            type: 'note' as const,
+                            description: `${event.points > 0 ? '+' : ''}${event.points} pts: ${event.name}`,
+                            date: new Date().toISOString(),
+                          };
+                          const updated = {
+                            ...selectedLead,
+                            score: newScore,
+                            history: [...(selectedLead.history || []), historyEntry],
+                          };
+                          setSelectedLead(updated);
+                          setLeads(leads.map(l => l.id === selectedLead.id ? updated : l));
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all hover-elevate
+                          ${event.points > 0 ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400' : 'border-destructive/30 bg-destructive/5 text-destructive'}`}
+                      >
+                        {event.points > 0 ? '+' : ''}{event.points} {event.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* ── Campos Customizados ── */}
               <div className="space-y-3 border-t pt-4">

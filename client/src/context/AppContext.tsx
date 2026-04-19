@@ -1,4 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useRef, useCallback } from 'react';
+import { DEFAULT_CRM_CONFIG } from '@shared/schema';
+import type { CRMConfig } from '@shared/schema';
+export type { CRMConfig, ScoreEvent, ScoreBand, NamedCadence, CadenceStep, CallOutcome } from '@shared/schema';
 
 export type Priority = 'do-now' | 'schedule' | 'delegate' | 'eliminate';
 
@@ -154,6 +157,8 @@ interface AppContextType {
   formatCurrency: (value: number | string) => string;
   t: Record<string, string>;
   isLoading: boolean;
+  crmConfig: CRMConfig;
+  setCrmConfig: (config: CRMConfig) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -206,6 +211,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [tasks, setTasksState] = useState<Task[]>([]);
   const [events, setEventsState] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [crmConfig, setCrmConfigState] = useState<CRMConfig>(DEFAULT_CRM_CONFIG);
 
   // Track server state for diffing
   const serverLeads = useRef<Map<number, Lead>>(new Map());
@@ -220,7 +226,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       apiFetch('/api/leads'),
       apiFetch('/api/tasks'),
       apiFetch('/api/events'),
-    ]).then(([s, stg, l, t, e]) => {
+      apiFetch('/api/crm-config'),
+    ]).then(([s, stg, l, t, e, crmCfg]) => {
       if (s) setSettingsState({ language: s.language, currency: s.currency });
       const normalizedStages = (stg as any[]).map(normalizeStage);
       setStagesState(normalizedStages);
@@ -231,7 +238,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setTasksState(normalizedTasks);
       serverTasks.current = new Map(normalizedTasks.map(t => [t.id, t]));
       setEventsState((e as any[]).map(normalizeEvent));
+      if (crmCfg && crmCfg.scoreBands) setCrmConfigState(crmCfg);
     }).catch(console.error).finally(() => setIsLoading(false));
+  }, []);
+
+  // ─── CRM Config ─────────────────────────────────────────────────────────
+  const setCrmConfig = useCallback((config: CRMConfig) => {
+    setCrmConfigState(config);
+    apiFetch('/api/crm-config', { method: 'PATCH', body: JSON.stringify(config) }).catch(console.error);
   }, []);
 
   // ─── Settings ───────────────────────────────────────────────────────────
@@ -462,6 +476,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       settings, setSettings, stages, setStages, leads, setLeads, tasks, setTasks,
       events, setEvents, updateLeadStage, addTask, addEvent, addLead,
       deleteLead, deleteTask, formatCurrency, t, isLoading,
+      crmConfig, setCrmConfig,
     }}>
       {children}
     </AppContext.Provider>
