@@ -1,0 +1,101 @@
+## 🔧 AJUSTES CIRÚRGICOS — CRM (não alterar outros módulos)
+
+O app usa AppContext compartilhado. O crmConfig já comunica 
+com CRMView corretamente — não refatorar essa estrutura.
+
+---
+
+### 1. ARQUIVAR LEADS
+
+No shared/schema.ts, adicionar campo na tabela leads:
+  archived: boolean("archived").notNull().default(false)
+  archivedAt: timestamp("archived_at")
+
+No AppContext, adicionar função:
+  archiveLead(id: number) — seta archived=true, archivedAt=now()
+  restoreLead(id: number) — seta archived=false
+  leads já filtrados por archived=false por padrão
+
+No CRMView:
+- Menu "..." de cada card deve ter: Editar / Arquivar / Apagar
+- Arquivar pede confirmação simples e some do board
+- Botão "Arquivados" no topo do CRM abre sheet lateral
+- Dentro da sheet: lista de leads arquivados com botões 
+  "Restaurar" e "Apagar definitivamente"
+- Apagar definitivamente pede confirmação com texto: 
+  "Esta ação não pode ser desfeita"
+
+---
+
+### 2. CHANCE DE FECHAMENTO
+
+Adicionar campo no schema:
+  closeChance: integer("close_chance").notNull().default(0)
+
+Criar função computeCloseChance(lead, crmConfig) no AppContext:
+
+  Base = soma dos pontos positivos dos scoreEvents que 
+         o lead já acumulou / maxPossibleScore * 70
+  
+  BANT bonus (formResponses preenchidos):
+  - "Caixa (Budget)" preenchido = +8%
+  - "Decisor (Authority)" preenchido = +7%
+  - "Necessidade (Need)" preenchido = +8%
+  - "Urgência (Timeline)" preenchido = +7%
+  
+  Penalidade de inatividade:
+  - Mais de 5 dias sem atividade = -3% por dia extra
+  
+  Resultado: clamp entre 0% e 99%
+  
+  Recalcular automaticamente ao:
+  - Adicionar evento de score ao lead
+  - Editar formResponses (BANT)
+  - Novo dia (verificar no load)
+
+Exibir no card do lead: número em destaque com cor
+  ≥70% → verde
+  40–69% → amarelo
+  <40% → vermelho
+
+Exibir no detalhe do lead: grande, com label "Close Chance"
+
+---
+
+### 3. CRM CONFIG COMO SUBMENU
+
+Remover /crm-config como rota separada do menu lateral.
+
+Dentro do CRMView, adicionar aba ou botão no topo:
+  [Pipeline] [Config]  ← tabs dentro da própria página /crm
+
+Quando ativo em "Config", renderizar o conteúdo atual do 
+CRMSettingsPage inline, sem trocar de rota.
+
+Atualizar Layout.tsx para remover "CRM Config" do sidebar.
+O acesso ao config passa a ser só dentro do /crm.
+
+---
+
+### 4. NOTIFICAÇÃO DE CADÊNCIA (básico)
+
+Quando um lead entra em um estágio que tem cadência 
+associada (trigger: 'on_schedule'), criar automaticamente 
+as tarefas dos passos "manual" na TasksView vinculadas 
+ao lead.
+
+Para passos do tipo "openphone" ou "email", criar 
+notificação interna (toast + badge no sino) com texto:
+"Passo X da cadência [nome] — enviar mensagem para [lead]"
+
+Não implementar envio automático real ainda — 
+apenas gerar a tarefa/notificação para o vendedor agir.
+
+---
+
+### REGRAS GERAIS
+- Não alterar dark/light theme
+- Não mexer em Agendamentos, Calendário, Tarefas, Zapier
+- Manter AppContext como fonte única de verdade
+- Rodar migration para adicionar colunas archived, 
+  archivedAt, closeChance na tabela leads
