@@ -176,6 +176,7 @@ interface AppContextType {
   archiveLead: (id: number) => void;
   restoreLead: (id: number) => void;
   computeCloseChance: (lead: Lead) => number;
+  recordCallOutcome: (leadId: number, outcomeId: string) => void;
   notifications: AppNotification[];
   addNotification: (message: string, leadId?: number | null) => void;
   markNotificationsRead: () => void;
@@ -314,6 +315,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const setLeads = useCallback((updater: Lead[] | ((prev: Lead[]) => Lead[])) => {
     setLeadsState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
+      // Low-score alert (alertThreshold from CRM config)
+      const threshold = crmConfig?.alertThreshold;
+      if (typeof threshold === 'number' && threshold > 0) {
+        const prevById = new Map(prev.map(l => [l.id, l]));
+        next.forEach(lead => {
+          const before = prevById.get(lead.id);
+          const beforeScore = before?.score ?? Infinity;
+          if (before && beforeScore >= threshold && (lead.score ?? 0) < threshold) {
+            setNotifications(ns => [
+              { id: Math.random().toString(36).substr(2, 9), message: `Score de ${lead.name} caiu abaixo de ${threshold} (atual: ${lead.score})`, date: new Date().toISOString(), read: false, leadId: lead.id },
+              ...ns,
+            ]);
+          }
+        });
+      }
       // Recompute closeChance for any changed lead
       const enriched = next.map(l => ({ ...l, closeChance: computeCloseChance(l) }));
       // Sync changed leads to API
@@ -335,7 +351,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       serverLeads.current = new Map(enriched.map(l => [l.id, l]));
       return enriched;
     });
-  }, [computeCloseChance]);
+  }, [computeCloseChance, crmConfig]);
 
   // ─── Notifications ──────────────────────────────────────────────────────
   const addNotification = useCallback((message: string, leadId?: number | null) => {
@@ -582,6 +598,47 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [stages, leads, addTask, addEvent, crmConfig, addNotification]);
 
+  const recordCallOutcome = useCallback((leadId: number, outcomeId: string) => {
+    const outcome = (crmConfig?.callOutcomes || []).find(o => o.id === outcomeId);
+    if (!outcome) return;
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    const newScore = (lead.score || 0) + (outcome.points || 0);
+    setLeadsState(prev => prev.map(l => l.id === leadId
+      ? { ...l, score: newScore, history: [...(l.history || []), { date: new Date().toISOString().split('T')[0], action: `Resultado da call: ${outcome.name} (${outcome.points >= 0 ? '+' : ''}${outcome.points} pts)` }] }
+      : l));
+    apiFetch(`/api/leads/${leadId}`, { method: 'PATCH', body: JSON.stringify({ score: newScore }) }).catch(console.error);
+
+    addNotification(`Resultado registrado para ${lead.name}: ${outcome.name} (${outcome.points >= 0 ? '+' : ''}${outcome.points} pts)`, leadId);
+
+    if (outcome.cadenceId) {
+      const cadence = (crmConfig?.cadences || []).find(c => c.id === outcome.cadenceId);
+      cadence?.steps.forEach((step, idx) => {
+        const d = new Date();
+        d.setDate(d.getDate() + (step.day || 0));
+        const dueDate = d.toISOString().split('T')[0];
+        if (step.channel === 'manual') {
+          addTask({
+            title: `Passo ${idx + 1} (${cadence.name}) — ${lead.name}`,
+            description: step.messageTemplate || `Passo manual da cadência ${cadence.name}`,
+            priority: 'schedule', dueDate,
+            responsibleUser: lead.owner || 'Quinzinho',
+            status: 'pending', type: 'Cadência Automática',
+            linkedLeadId: leadId, linkedStageId: outcome.targetStageId || lead.stage,
+          });
+        } else {
+          const channelLabel = step.channel === 'openphone' ? 'OpenPhone' : 'Email';
+          addNotification(`Passo ${idx + 1} da cadência ${cadence.name} (${channelLabel}) — enviar mensagem para ${lead.name}`, leadId);
+        }
+      });
+    }
+
+    if (outcome.targetStageId && outcome.targetStageId !== lead.stage) {
+      updateLeadStage(leadId, outcome.targetStageId, false);
+    }
+  }, [crmConfig, leads, addNotification, addTask, updateLeadStage]);
+
   const t = getGlobalTranslations(settings?.language || 'pt-BR');
 
   return (
@@ -590,7 +647,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       events, setEvents, updateLeadStage, addTask, addEvent, addLead,
       deleteLead, deleteTask, formatCurrency, t, isLoading,
       crmConfig, setCrmConfig,
-      archiveLead, restoreLead, computeCloseChance,
+      archiveLead, restoreLead, computeCloseChance, recordCallOutcome,
       notifications, addNotification, markNotificationsRead, clearNotification,
     }}>
       {children}

@@ -11,7 +11,7 @@ import type { Lead, Stage, CadenceAction } from "@/context/AppContext";
 import CRMSettingsPage from "@/pages/CRMSettingsPage";
 
 export default function CRMView() {
-  const { stages, setStages, leads, setLeads, updateLeadStage, addLead, formatCurrency, t, deleteLead, addTask, crmConfig, archiveLead, restoreLead } = useAppContext();
+  const { stages, setStages, leads, setLeads, updateLeadStage, addLead, formatCurrency, t, deleteLead, addTask, crmConfig, archiveLead, restoreLead, recordCallOutcome } = useAppContext();
   const { tasks, setTasks } = useAppContext();
 
   // ── Pipeline / Config tabs ───────────────────────────────────────────────
@@ -762,6 +762,29 @@ export default function CRMView() {
                   </div>
                 </div>
               </div>
+
+              {/* ── Resultado da Call ── */}
+              {(crmConfig?.callOutcomes?.length ?? 0) > 0 && (
+                <div className="space-y-2 border rounded-lg p-3 bg-secondary/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Phone className="w-4 h-4 text-primary" />
+                    <h3 className="font-semibold text-sm">Registrar Resultado da Call</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {crmConfig.callOutcomes.map(outcome => (
+                      <button
+                        key={outcome.id}
+                        onClick={() => recordCallOutcome(selectedLead.id, outcome.id)}
+                        className="px-3 py-1 rounded-full text-xs font-medium border bg-background text-foreground hover-elevate active-elevate-2"
+                        title={`${outcome.points >= 0 ? '+' : ''}${outcome.points} pts`}
+                        data-testid={`button-outcome-${outcome.id}`}
+                      >
+                        {outcome.name} <span className={`ml-1 ${outcome.points > 0 ? 'text-emerald-500' : outcome.points < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>({outcome.points >= 0 ? '+' : ''}{outcome.points})</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* ── Trocar etapa pelo card ── */}
               <div className="space-y-2 border rounded-lg p-3 bg-secondary/10">
