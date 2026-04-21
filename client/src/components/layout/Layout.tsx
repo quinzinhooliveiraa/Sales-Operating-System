@@ -13,7 +13,6 @@ import {
   Plus,
   Zap,
   Upload,
-  SlidersHorizontal
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/AppContext";
@@ -38,7 +37,6 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: bool
     { href: "/tarefas", label: t.tasks, icon: CheckSquare },
     { href: "/calendario", label: t.calendar, icon: CalendarDays },
     { href: "/importar", label: "Importar Leads", icon: Upload },
-    { href: "/crm-config", label: "CRM Config", icon: SlidersHorizontal },
     { href: "/zapier", label: "Zapier", icon: Zap },
   ];
 
@@ -75,7 +73,8 @@ export function Sidebar({ open, setOpen }: { open: boolean, setOpen: (open: bool
 }
 
 export function Topbar({ setSidebarOpen }: { setSidebarOpen: (open: boolean) => void }) {
-  const { settings, setSettings } = useAppContext();
+  const { settings, setSettings, notifications, markNotificationsRead, clearNotification } = useAppContext();
+  const unreadCount = notifications.filter(n => !n.read).length;
   return (
     <header className="h-14 bg-background border-b flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
       <div className="flex items-center gap-4">
@@ -90,10 +89,39 @@ export function Topbar({ setSidebarOpen }: { setSidebarOpen: (open: boolean) => 
 
       <div className="flex items-center gap-2 md:gap-3">
         <ThemeToggle />
-        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-primary rounded-full"></span>
-        </Button>
+        <DropdownMenu onOpenChange={(open) => { if (open) markNotificationsRead(); }}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground" data-testid="button-notifications">
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 text-[9px] font-bold bg-primary text-primary-foreground rounded-full flex items-center justify-center" data-testid="badge-notifications-count">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel>Notificações</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {notifications.length === 0 ? (
+              <div className="px-3 py-6 text-center text-xs text-muted-foreground">Nenhuma notificação</div>
+            ) : (
+              <div className="max-h-80 overflow-y-auto">
+                {notifications.slice(0, 20).map(n => (
+                  <div key={n.id} className="px-3 py-2 flex items-start gap-2 hover:bg-secondary/50 group" data-testid={`notification-${n.id}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs leading-snug">{n.message}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{new Date(n.date).toLocaleString('pt-BR')}</p>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100" onClick={() => clearNotification(n.id)}>
+                      <span className="text-xs">×</span>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <div className="h-4 w-px bg-border mx-1"></div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

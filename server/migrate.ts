@@ -77,6 +77,13 @@ export async function runMigrations() {
       ALTER TABLE settings ADD COLUMN IF NOT EXISTS crm_config JSONB DEFAULT '{}'::jsonb;
     `);
 
+    // Add archive + close chance columns to leads
+    await db.execute(sql`
+      ALTER TABLE leads ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE leads ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP;
+      ALTER TABLE leads ADD COLUMN IF NOT EXISTS close_chance INTEGER NOT NULL DEFAULT 0;
+    `);
+
     // Seed default stages if empty
     const existingStages = await db.execute(sql`SELECT COUNT(*) as count FROM stages`);
     const stageCount = Number((existingStages.rows[0] as any).count);

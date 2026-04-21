@@ -44,6 +44,9 @@ export const leads = pgTable("leads", {
   history: jsonb("history").notNull().default(sql`'[]'::jsonb`),
   meetingDate: text("meeting_date"),
   nextTask: text("next_task"),
+  archived: boolean("archived").notNull().default(false),
+  archivedAt: timestamp("archived_at"),
+  closeChance: integer("close_chance").notNull().default(0),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 

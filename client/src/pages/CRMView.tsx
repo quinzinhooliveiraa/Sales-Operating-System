@@ -1,16 +1,36 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, MoreHorizontal, Clock, DollarSign, Calendar, Target, Activity, Phone, Mail, Settings2, Trash2, User, X, Mic, Loader2, ChevronDown, ChevronRight, CheckSquare, Square, Edit2, PlusCircle, Check, ArrowRightLeft, Zap } from "lucide-react";
+import { Plus, MoreHorizontal, Clock, DollarSign, Calendar, Target, Activity, Phone, Mail, Settings2, Trash2, User, X, Mic, Loader2, ChevronDown, ChevronRight, CheckSquare, Square, Edit2, PlusCircle, Check, ArrowRightLeft, Zap, Archive, ArchiveRestore, MoreVertical, TrendingUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useAppContext } from "@/context/AppContext";
 import type { Lead, Stage, CadenceAction } from "@/context/AppContext";
+import CRMSettingsPage from "@/pages/CRMSettingsPage";
 
 export default function CRMView() {
-  const { stages, setStages, leads, setLeads, updateLeadStage, addLead, formatCurrency, t, deleteLead, addTask, crmConfig } = useAppContext();
+  const { stages, setStages, leads, setLeads, updateLeadStage, addLead, formatCurrency, t, deleteLead, addTask, crmConfig, archiveLead, restoreLead } = useAppContext();
   const { tasks, setTasks } = useAppContext();
+
+  // ── Pipeline / Config tabs ───────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<'pipeline' | 'config'>('pipeline');
+
+  // ── Archive ──────────────────────────────────────────────────────────────
+  const [isArchivedOpen, setIsArchivedOpen] = useState(false);
+  const [confirmArchiveLeadId, setConfirmArchiveLeadId] = useState<number | null>(null);
+  const [confirmHardDeleteLeadId, setConfirmHardDeleteLeadId] = useState<number | null>(null);
+  const [hardDeleteConfirmText, setHardDeleteConfirmText] = useState("");
+
+  const activeLeads = leads.filter(l => !l.archived);
+  const archivedLeadsList = leads.filter(l => l.archived);
+
+  const closeChanceColor = (chance: number) => {
+    if (chance >= 70) return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
+    if (chance >= 40) return 'text-amber-500 bg-amber-500/10 border-amber-500/30';
+    return 'text-red-500 bg-red-500/10 border-red-500/30';
+  };
 
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
   const [draggedStageId, setDraggedStageId] = useState<string | null>(null);
@@ -370,6 +390,9 @@ export default function CRMView() {
               <Button variant="outline" className="h-8 text-xs gap-1.5" onClick={() => setIsManagePipelineOpen(true)}>
                 <Settings2 className="w-3.5 h-3.5" /> Pipeline
               </Button>
+              <Button variant="outline" className="h-8 text-xs gap-1.5" onClick={() => setIsArchivedOpen(true)} data-testid="button-open-archived">
+                <Archive className="w-3.5 h-3.5" /> Arquivados {archivedLeadsList.length > 0 && `(${archivedLeadsList.length})`}
+              </Button>
               <Button className="gap-1.5 h-8 text-xs bg-primary text-primary-foreground" onClick={() => {
                 setNewLead({ name: "", company: "", email: "", phone: "", stage: stages[0]?.id || "", owner: "Quinzinho", notes: "",
                   formResponses: { "Caixa (Budget)": "", "Decisor (Authority)": "", "Necessidade (Need)": "", "Urgência (Timeline)": "" } });
@@ -382,11 +405,33 @@ export default function CRMView() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex border-b shrink-0">
+        <button
+          onClick={() => setActiveTab('pipeline')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === 'pipeline' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          data-testid="tab-pipeline"
+        >Pipeline</button>
+        <button
+          onClick={() => setActiveTab('config')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === 'config' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          data-testid="tab-config"
+        >Configuração CRM</button>
+      </div>
+
+      {activeTab === 'config' && (
+        <div className="flex-1 overflow-y-auto">
+          <CRMSettingsPage />
+        </div>
+      )}
+
+      {activeTab === 'pipeline' && (
+      <>
       {/* Kanban Board */}
       <div className="flex-1 overflow-x-auto pb-2">
         <div className="flex gap-4 h-full min-w-max px-1">
           {stages.map((stage) => {
-            const stageLeads = leads.filter(l => l.stage === stage.id);
+            const stageLeads = activeLeads.filter(l => l.stage === stage.id);
             return (
               <div
                 key={stage.id}
@@ -442,23 +487,59 @@ export default function CRMView() {
                           </div>
                         )}
 
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium text-sm text-foreground pr-5">{lead.name}</h4>
-                          {(() => {
-                            const band = getScoreBand(lead.score);
-                            return band ? (
+                        <div className="flex justify-between items-start mb-2 gap-1">
+                          <h4 className="font-medium text-sm text-foreground pr-1 flex-1 min-w-0 truncate" data-testid={`text-lead-name-${lead.id}`}>{lead.name}</h4>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {typeof lead.closeChance === 'number' && (
                               <span
-                                className="text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1"
-                                style={{ backgroundColor: band.color + '20', color: band.color }}
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border flex items-center gap-0.5 ${closeChanceColor(lead.closeChance)}`}
+                                title="Chance de Fechamento"
+                                data-testid={`badge-close-chance-${lead.id}`}
                               >
-                                {band.emoji} {formatScore(lead.score)}
+                                <TrendingUp className="w-2.5 h-2.5" /> {lead.closeChance}%
                               </span>
-                            ) : (
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${getScoreColor(lead.score)}`}>
-                                <Target className="w-2.5 h-2.5" /> {formatScore(lead.score)}
-                              </span>
-                            );
-                          })()}
+                            )}
+                            {(() => {
+                              const band = getScoreBand(lead.score);
+                              return band ? (
+                                <span
+                                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1"
+                                  style={{ backgroundColor: band.color + '20', color: band.color }}
+                                >
+                                  {band.emoji} {formatScore(lead.score)}
+                                </span>
+                              ) : (
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${getScoreColor(lead.score)}`}>
+                                  <Target className="w-2.5 h-2.5" /> {formatScore(lead.score)}
+                                </span>
+                              );
+                            })()}
+                            {!isSelectionMode && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 opacity-60 hover:opacity-100" data-testid={`button-lead-menu-${lead.id}`}>
+                                    <MoreVertical className="w-3 h-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedLead(lead); }} data-testid={`menu-edit-${lead.id}`}>
+                                    <Edit2 className="w-3.5 h-3.5 mr-2" /> Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setConfirmArchiveLeadId(lead.id); }} data-testid={`menu-archive-${lead.id}`}>
+                                    <Archive className="w-3.5 h-3.5 mr-2" /> Arquivar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={(e) => { e.stopPropagation(); setConfirmHardDeleteLeadId(lead.id); setHardDeleteConfirmText(""); }}
+                                    className="text-destructive focus:text-destructive"
+                                    data-testid={`menu-delete-${lead.id}`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 mr-2" /> Apagar permanentemente
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-between mb-3">
@@ -521,6 +602,98 @@ export default function CRMView() {
           </div>
         </div>
       </div>
+
+      </>
+      )}
+
+      {/* ── Archived Leads Sheet ───────────────────────────────────────────── */}
+      <Sheet open={isArchivedOpen} onOpenChange={setIsArchivedOpen}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto bg-card border-l" data-testid="sheet-archived">
+          <SheetHeader>
+            <SheetTitle>Leads Arquivados</SheetTitle>
+            <SheetDescription>{archivedLeadsList.length} lead(s) arquivado(s). Restaure ou apague permanentemente.</SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 space-y-2">
+            {archivedLeadsList.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhum lead arquivado.</p>
+            ) : archivedLeadsList.map(lead => (
+              <div key={lead.id} className="border rounded-lg p-3 flex items-start justify-between gap-2" data-testid={`archived-lead-${lead.id}`}>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm truncate">{lead.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{lead.company} {lead.value ? `• ${lead.value}` : ''}</p>
+                  {lead.archivedAt && (
+                    <p className="text-[10px] text-muted-foreground mt-1">Arquivado em {new Date(lead.archivedAt).toLocaleDateString('pt-BR')}</p>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1 shrink-0">
+                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => restoreLead(lead.id)} data-testid={`button-restore-${lead.id}`}>
+                    <ArchiveRestore className="w-3 h-3" /> Restaurar
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={() => { setConfirmHardDeleteLeadId(lead.id); setHardDeleteConfirmText(""); }} data-testid={`button-hard-delete-${lead.id}`}>
+                    <Trash2 className="w-3 h-3" /> Apagar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Confirm Archive Dialog ─────────────────────────────────────────── */}
+      <Dialog open={confirmArchiveLeadId !== null} onOpenChange={(open) => !open && setConfirmArchiveLeadId(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Arquivar Lead?</DialogTitle>
+            <DialogDescription>
+              O lead será movido para a lista de arquivados e poderá ser restaurado a qualquer momento.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmArchiveLeadId(null)}>Cancelar</Button>
+            <Button onClick={() => {
+              if (confirmArchiveLeadId !== null) {
+                archiveLead(confirmArchiveLeadId);
+                if (selectedLead?.id === confirmArchiveLeadId) setSelectedLead(null);
+              }
+              setConfirmArchiveLeadId(null);
+            }} data-testid="button-confirm-archive">Arquivar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Confirm Permanent Delete Dialog ────────────────────────────────── */}
+      <Dialog open={confirmHardDeleteLeadId !== null} onOpenChange={(open) => { if (!open) { setConfirmHardDeleteLeadId(null); setHardDeleteConfirmText(""); } }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Apagar Permanentemente?</DialogTitle>
+            <DialogDescription>
+              Esta ação é irreversível. Para confirmar, digite <span className="font-bold">APAGAR</span> abaixo.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={hardDeleteConfirmText}
+            onChange={(e) => setHardDeleteConfirmText(e.target.value)}
+            placeholder="Digite APAGAR"
+            data-testid="input-confirm-delete"
+          />
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setConfirmHardDeleteLeadId(null); setHardDeleteConfirmText(""); }}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              disabled={hardDeleteConfirmText !== "APAGAR"}
+              onClick={() => {
+                if (confirmHardDeleteLeadId !== null) {
+                  deleteLead(confirmHardDeleteLeadId);
+                  if (selectedLead?.id === confirmHardDeleteLeadId) setSelectedLead(null);
+                }
+                setConfirmHardDeleteLeadId(null);
+                setHardDeleteConfirmText("");
+              }}
+              data-testid="button-confirm-hard-delete"
+            >Apagar Permanentemente</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Lead Detail Sheet ─────────────────────────────────────────────── */}
       <Sheet open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>

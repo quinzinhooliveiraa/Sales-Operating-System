@@ -59,6 +59,17 @@ export type Lead = {
   history: LeadActivity[];
   meetingDate?: string | null;
   nextTask?: string | null;
+  archived?: boolean;
+  archivedAt?: string | null;
+  closeChance?: number;
+};
+
+export type AppNotification = {
+  id: string;
+  message: string;
+  date: string;
+  read: boolean;
+  leadId?: number | null;
 };
 
 export type CalendarEvent = {
@@ -98,6 +109,9 @@ function normalizeLead(r: any): Lead {
     history: r.history ?? [],
     meetingDate: r.meetingDate ?? r.meeting_date ?? null,
     nextTask: r.nextTask ?? r.next_task ?? null,
+    archived: r.archived ?? false,
+    archivedAt: r.archivedAt ?? r.archived_at ?? null,
+    closeChance: r.closeChance ?? r.close_chance ?? 0,
   };
 }
 function normalizeTask(r: any): Task {
@@ -159,6 +173,13 @@ interface AppContextType {
   isLoading: boolean;
   crmConfig: CRMConfig;
   setCrmConfig: (config: CRMConfig) => void;
+  archiveLead: (id: number) => void;
+  restoreLead: (id: number) => void;
+  computeCloseChance: (lead: Lead) => number;
+  notifications: AppNotification[];
+  addNotification: (message: string, leadId?: number | null) => void;
+  markNotificationsRead: () => void;
+  clearNotification: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -212,6 +233,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [events, setEventsState] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [crmConfig, setCrmConfigState] = useState<CRMConfig>(DEFAULT_CRM_CONFIG);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
   // Track server state for diffing
   const serverLeads = useRef<Map<number, Lead>>(new Map());
@@ -258,12 +280,44 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
   }, []);
 
+  // ─── Close Chance computation ───────────────────────────────────────────
+  const computeCloseChance = useCallback((lead: Lead): number => {
+    const events = crmConfig?.scoreEvents || [];
+    const maxScore = events.reduce((s, e) => e.points > 0 ? s + e.points : s, 0) || 100;
+    const positiveScore = Math.max(0, lead.score || 0);
+    const baseChance = (positiveScore / maxScore) * 70;
+
+    let bantBonus = 0;
+    const fr = lead.formResponses || {};
+    const filled = (v: any) => v && v !== "" && v !== "Não avaliado";
+    if (filled(fr["Caixa (Budget)"])) bantBonus += 8;
+    if (filled(fr["Decisor (Authority)"])) bantBonus += 7;
+    if (filled(fr["Necessidade (Need)"])) bantBonus += 8;
+    if (filled(fr["Urgência (Timeline)"])) bantBonus += 7;
+
+    let lastActivityTime = 0;
+    (lead.history || []).forEach(h => {
+      const t = new Date(h.date).getTime();
+      if (!isNaN(t) && t > lastActivityTime) lastActivityTime = t;
+    });
+    let inactivityPenalty = 0;
+    if (lastActivityTime > 0) {
+      const daysSince = (Date.now() - lastActivityTime) / 86400000;
+      if (daysSince > 5) inactivityPenalty = (daysSince - 5) * 3;
+    }
+
+    const result = baseChance + bantBonus - inactivityPenalty;
+    return Math.max(0, Math.min(99, Math.round(result)));
+  }, [crmConfig]);
+
   // ─── Leads ──────────────────────────────────────────────────────────────
   const setLeads = useCallback((updater: Lead[] | ((prev: Lead[]) => Lead[])) => {
     setLeadsState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
+      // Recompute closeChance for any changed lead
+      const enriched = next.map(l => ({ ...l, closeChance: computeCloseChance(l) }));
       // Sync changed leads to API
-      next.forEach(lead => {
+      enriched.forEach(lead => {
         const old = serverLeads.current.get(lead.id);
         if (old && (old.stage !== lead.stage || JSON.stringify(old) !== JSON.stringify(lead))) {
           apiFetch(`/api/leads/${lead.id}`, { method: 'PATCH', body: JSON.stringify({
@@ -271,14 +325,45 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             company: lead.company, value: lead.value, owner: lead.owner, tags: lead.tags,
             score: lead.score, notes: lead.notes, history: lead.history,
             formResponses: lead.formResponses, meetingDate: lead.meetingDate, nextTask: lead.nextTask,
+            archived: lead.archived ?? false, archivedAt: lead.archivedAt ?? null,
+            closeChance: lead.closeChance ?? 0,
           }) }).then(updated => {
             serverLeads.current.set(lead.id, normalizeLead(updated));
           }).catch(console.error);
         }
       });
-      serverLeads.current = new Map(next.map(l => [l.id, l]));
-      return next;
+      serverLeads.current = new Map(enriched.map(l => [l.id, l]));
+      return enriched;
     });
+  }, [computeCloseChance]);
+
+  // ─── Notifications ──────────────────────────────────────────────────────
+  const addNotification = useCallback((message: string, leadId?: number | null) => {
+    setNotifications(prev => [
+      { id: Math.random().toString(36).substr(2, 9), message, date: new Date().toISOString(), read: false, leadId: leadId ?? null },
+      ...prev,
+    ]);
+  }, []);
+  const markNotificationsRead = useCallback(() => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  }, []);
+  const clearNotification = useCallback((id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
+  // ─── Archive / Restore ──────────────────────────────────────────────────
+  const archiveLead = useCallback((id: number) => {
+    const archivedAt = new Date().toISOString();
+    setLeadsState(prev => prev.map(l => l.id === id ? { ...l, archived: true, archivedAt } : l));
+    apiFetch(`/api/leads/${id}`, { method: 'PATCH', body: JSON.stringify({ archived: true, archivedAt }) })
+      .then(updated => serverLeads.current.set(id, normalizeLead(updated)))
+      .catch(console.error);
+  }, []);
+  const restoreLead = useCallback((id: number) => {
+    setLeadsState(prev => prev.map(l => l.id === id ? { ...l, archived: false, archivedAt: null } : l));
+    apiFetch(`/api/leads/${id}`, { method: 'PATCH', body: JSON.stringify({ archived: false, archivedAt: null }) })
+      .then(updated => serverLeads.current.set(id, normalizeLead(updated)))
+      .catch(console.error);
   }, []);
 
   // ─── Tasks ───────────────────────────────────────────────────────────────
@@ -372,6 +457,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       value: lead.value, stage: lead.stage, owner: lead.owner, tags: lead.tags,
       score: lead.score, formResponses: lead.formResponses, notes: lead.notes,
       history: lead.history, meetingDate: lead.meetingDate, nextTask: lead.nextTask,
+      archived: false, closeChance: computeCloseChance(optimistic),
     }) }).then(created => {
       const normalized = normalizeLead(created);
       setLeadsState(prev => prev.map(l => l.id === tempId ? normalized : l));
@@ -406,7 +492,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }).catch(console.error);
 
     return optimistic;
-  }, [stages, addTask, addEvent]);
+  }, [stages, addTask, addEvent, computeCloseChance]);
 
   // ─── deleteLead ──────────────────────────────────────────────────────────
   const deleteLead = useCallback((id: number) => {
@@ -443,6 +529,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     if (restartCadence) {
       const stage = stages.find(s => s.id === stageId);
+      const lead = leads.find(l => l.id === leadId);
       if (stage?.cadence?.length) {
         stage.cadence.forEach((action, idx) => {
           const d = new Date();
@@ -450,7 +537,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           else if (action.intervalUnit === 'hours') d.setHours(d.getHours() + action.intervalValue);
           else if (action.intervalUnit === 'days') d.setDate(d.getDate() + action.intervalValue);
           const actionText = action.type === 'call' ? 'Ligar para' : action.type === 'email' ? 'Email para' : 'Mensagem para';
-          const lead = leads.find(l => l.id === leadId);
           const newTask = addTask({
             title: `${actionText} ${lead?.name || 'Lead'} (Touch ${idx + 1})`,
             description: `Gerado automaticamente ao mover para a etapa ${stage.name}`,
@@ -466,8 +552,35 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           });
         });
       }
+
+      // Named cadences from crmConfig with trigger 'on_schedule'
+      const scheduleCadences = (crmConfig?.cadences || []).filter(c => c.trigger === 'on_schedule');
+      scheduleCadences.forEach(cadence => {
+        cadence.steps.forEach((step, idx) => {
+          const d = new Date();
+          d.setDate(d.getDate() + (step.day || 0));
+          const dueDate = d.toISOString().split('T')[0];
+          if (step.channel === 'manual') {
+            addTask({
+              title: `Passo ${idx + 1} (${cadence.name}) — ${lead?.name || 'Lead'}`,
+              description: step.messageTemplate || `Passo manual da cadência ${cadence.name}`,
+              priority: 'schedule', dueDate,
+              responsibleUser: lead?.owner || 'Quinzinho',
+              status: 'pending', type: 'Cadência Automática',
+              linkedLeadId: leadId, linkedStageId: stageId,
+            });
+          } else {
+            // openphone or email → internal notification only
+            const channelLabel = step.channel === 'openphone' ? 'OpenPhone' : 'Email';
+            addNotification(
+              `Passo ${idx + 1} da cadência ${cadence.name} (${channelLabel}) — enviar mensagem para ${lead?.name || 'Lead'}`,
+              leadId
+            );
+          }
+        });
+      });
     }
-  }, [stages, leads, addTask, addEvent]);
+  }, [stages, leads, addTask, addEvent, crmConfig, addNotification]);
 
   const t = getGlobalTranslations(settings?.language || 'pt-BR');
 
@@ -477,6 +590,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       events, setEvents, updateLeadStage, addTask, addEvent, addLead,
       deleteLead, deleteTask, formatCurrency, t, isLoading,
       crmConfig, setCrmConfig,
+      archiveLead, restoreLead, computeCloseChance,
+      notifications, addNotification, markNotificationsRead, clearNotification,
     }}>
       {children}
     </AppContext.Provider>
